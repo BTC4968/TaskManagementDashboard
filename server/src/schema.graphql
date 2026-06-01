@@ -243,6 +243,7 @@ type BoardEvent {
   list: TaskList
   label: Label
   comment: TaskComment
+  checklistItem: ChecklistItem
   activity: ActivityItem
 }
 

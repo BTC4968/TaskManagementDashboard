@@ -133,6 +133,7 @@ export interface BoardEvent {
   list?: TaskList | null;
   label?: Label | null;
   comment?: TaskComment | null;
+  checklistItem?: ChecklistItem | null;
   activity?: ActivityItem | null;
 }
 

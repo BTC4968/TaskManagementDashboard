@@ -6,18 +6,18 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () =>
-      import('./features/auth/login.component').then((m) => m.LoginComponent),
+      import('./features/auth/pages/login.component').then((m) => m.LoginComponent),
   },
   {
     path: 'callback',
     loadComponent: () =>
-      import('./features/auth/callback.component').then((m) => m.CallbackComponent),
+      import('./features/auth/pages/callback.component').then((m) => m.CallbackComponent),
   },
   {
     path: 'dashboard',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/board/feature/board-page.component').then((m) => m.BoardPageComponent),
+      import('./features/board/pages/board-page/board-page.component').then((m) => m.BoardPageComponent),
   },
   { path: '**', redirectTo: 'dashboard' },
 ];

@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import { env } from '../config/env.js';
-import type { BoardEvent, TaskEvent } from '../tasks/repository.js';
+import type { BoardEvent, TaskEvent } from '../domain/repository.js';
 
 export const TASK_EVENTS_CHANNEL = 'task_events';
 

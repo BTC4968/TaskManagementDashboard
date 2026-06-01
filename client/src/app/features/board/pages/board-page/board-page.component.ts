@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
-import { BoardFacade } from '../data-access/board.facade';
-import { BoardHeaderComponent } from '../ui/board-header/board-header.component';
-import { BoardCanvasComponent } from '../ui/board-canvas/board-canvas.component';
-import { CardDetailModalComponent } from '../ui/card-detail-modal/card-detail-modal.component';
+import { BoardFacade } from '../../data-access/board.facade';
+import { BoardHeaderComponent } from '../../components/board-header/board-header.component';
+import { BoardCanvasComponent } from '../../components/board-canvas/board-canvas.component';
+import { CardDetailModalComponent } from '../../components/card-detail-modal/card-detail-modal.component';
 
 @Component({
   selector: 'app-board-page',

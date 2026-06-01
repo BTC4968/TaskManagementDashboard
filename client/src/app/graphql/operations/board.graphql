@@ -256,6 +256,9 @@ subscription BoardChanged($boardId: ID!) {
     comment {
       ...CommentFields
     }
+    checklistItem {
+      ...ChecklistItemFields
+    }
     activity {
       ...ActivityFields
     }

@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { serverRoot } from '../config/env.js';
 
 export async function runMigrations(pool: Pool): Promise<string[]> {
-  const migrationsDir = resolve(serverRoot, 'migrations');
+  const migrationsDir = resolve(serverRoot, 'src/db/migrations');
   const files = readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
     .sort();

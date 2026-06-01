@@ -208,11 +208,14 @@ Validation errors use `BAD_USER_INPUT`, for example empty titles or priority val
 
 Frontend cache guidance:
 
-- `CARD_CREATED`: insert into the target list or refetch `boardView`.
+- Apply `boardChanged` events incrementally in local state — do **not** refetch `boardView` on every event.
+- `CARD_CREATED`: insert the card into the target list using `task` fields.
 - `CARD_MOVED`: move the card between lists by `listId` and `position`.
-- `CARD_UPDATED`: update card fields; if the open modal has an older `version`, show conflict UI.
+- `CARD_UPDATED`: merge scalar card fields; if the open modal has an older `version`, show conflict UI.
 - `CARD_ARCHIVED`: remove the card from visible lists.
-- `COMMENT_CREATED` / `CHECKLIST_UPDATED` / `LABEL_UPDATED`: refresh the affected card detail.
+- `COMMENT_CREATED`: append `comment` to the card; prepend `activity` when present.
+- `CHECKLIST_UPDATED`: upsert `checklistItem` on the affected card.
+- `LABEL_UPDATED`: merge `label` into board labels; bump card version when `task` is present.
 
 For optimistic writes, send a unique `clientMutationId` on `UpdateTaskInput`, `MoveTaskInput`, and `UpdateListInput`. The backend echoes it on `boardChanged`; clients should ignore conflict UI for events with their own pending mutation id and use foreign newer versions for conflict banners.
 
@@ -226,4 +229,4 @@ npm run dev
 npm test
 ```
 
-`npm run migrate` applies SQL files from `server/migrations` and records them in `schema_migrations`.
+`npm run migrate` applies SQL files from `server/src/db/migrations` and records them in `schema_migrations`.

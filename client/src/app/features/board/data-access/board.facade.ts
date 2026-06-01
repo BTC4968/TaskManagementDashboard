@@ -8,7 +8,6 @@ import {
   BoardChangedDocument,
   BoardChangedSubscription,
   BoardChangedSubscriptionVariables,
-  BoardEventType,
   BoardViewDocument,
   BoardViewQuery,
   BoardViewQueryVariables,
@@ -44,6 +43,15 @@ import {
   AddCommentMutationVariables,
 } from '../../../graphql/generated/graphql';
 import { BoardCardModel, BoardListModel, BoardViewModel, CardConflict, CardMoveRequest, ListMoveRequest } from '../models/board.types';
+import {
+  applyBoardEvent,
+  applyChecklistItem,
+  applyComment,
+  applyListCreated,
+  applyListUpdated,
+  reconcileCreatedCard,
+  reconcileTask,
+} from './board-sync';
 
 type CardUpdateInput = Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignee' | 'dueDate' | 'coverColor'>>;
 
@@ -101,7 +109,13 @@ export class BoardFacade {
     this.apollo
       .mutate<CreateListMutation, CreateListMutationVariables>({ mutation: CreateListDocument, variables: { input: { boardId, title: title.trim() } } })
       .subscribe({
-        next: () => this.refetchBoard(),
+        next: ({ data }) => {
+          const list = data?.createList;
+          const view = this.view();
+          if (list && view) {
+            this.view.set(applyListCreated(view, list));
+          }
+        },
         error: () => this.rollback(snapshot, 'List creation failed.'),
       });
   }
@@ -127,7 +141,10 @@ export class BoardFacade {
         },
       })
       .subscribe({
-        next: () => this.refetchBoard(),
+        next: ({ data }) => {
+          const task = data?.createTask;
+          if (task) this.reconcileCreatedCardFromServer(task);
+        },
         error: () => this.rollback(snapshot, 'Card creation failed.'),
       });
   }
@@ -149,10 +166,11 @@ export class BoardFacade {
           if (data?.updateTask.conflict && data.updateTask.task) {
             this.registerConflict(card.id, card.version, data.updateTask.task);
             this.toast.warning('This card changed elsewhere.', `conflict:${card.id}`);
+            this.reconcileServerTask(data.updateTask.task);
           } else {
             this.dismissConflict(card.id);
+            if (data?.updateTask.task) this.reconcileServerTask(data.updateTask.task);
           }
-          this.refetchBoard();
         },
         error: () => this.rollback(snapshot, 'Card update failed.'),
       });
@@ -185,10 +203,11 @@ export class BoardFacade {
           if (data?.moveTask.conflict && data.moveTask.task) {
             this.registerConflict(request.task.id, request.task.version, data.moveTask.task);
             this.toast.warning('Move conflict detected.', `conflict:${request.task.id}`);
+            this.reconcileServerTask(data.moveTask.task);
           } else {
             this.dismissConflict(request.task.id);
+            if (data?.moveTask.task) this.reconcileServerTask(data.moveTask.task);
           }
-          this.refetchBoard();
         },
         error: () => this.rollback(snapshot, 'Move failed.'),
       });
@@ -215,8 +234,10 @@ export class BoardFacade {
         next: ({ data }) => {
           if (data?.updateList.conflict) {
             this.toast.warning('List order changed elsewhere.', `conflict:list:${request.list.id}`);
+            if (data.updateList.list) this.reconcileServerList(data.updateList.list);
+          } else if (data?.updateList.list) {
+            this.reconcileServerList(data.updateList.list);
           }
-          this.refetchBoard();
         },
         error: () => this.rollback(snapshot, 'List move failed.', `rollback:list:${request.list.id}`),
       });
@@ -228,7 +249,6 @@ export class BoardFacade {
     this.apollo
       .mutate<DeleteTaskMutation, DeleteTaskMutationVariables>({ mutation: DeleteTaskDocument, variables: { id: card.id, expectedVersion: card.version } })
       .subscribe({
-        next: () => this.refetchBoard(),
         error: () => this.rollback(snapshot, 'Archive failed.'),
       });
   }
@@ -237,20 +257,41 @@ export class BoardFacade {
     if (!text.trim()) return;
     this.apollo
       .mutate<CreateChecklistItemMutation, CreateChecklistItemMutationVariables>({ mutation: CreateChecklistItemDocument, variables: { taskId: card.id, text: text.trim() } })
-      .subscribe({ next: () => this.refetchBoard(), error: () => this.toast.error('Checklist update failed.') });
+      .subscribe({
+        next: ({ data }) => {
+          const item = data?.createChecklistItem;
+          const view = this.view();
+          if (item && view) this.view.set(applyChecklistItem(view, item));
+        },
+        error: () => this.toast.error('Checklist update failed.'),
+      });
   }
 
   updateChecklistItem(id: string, checked: boolean): void {
     this.apollo
       .mutate<UpdateChecklistItemMutation, UpdateChecklistItemMutationVariables>({ mutation: UpdateChecklistItemDocument, variables: { id, checked } })
-      .subscribe({ next: () => this.refetchBoard(), error: () => this.toast.error('Checklist update failed.') });
+      .subscribe({
+        next: ({ data }) => {
+          const item = data?.updateChecklistItem;
+          const view = this.view();
+          if (item && view) this.view.set(applyChecklistItem(view, item));
+        },
+        error: () => this.toast.error('Checklist update failed.'),
+      });
   }
 
   addComment(card: BoardCardModel, body: string): void {
     if (!body.trim()) return;
     this.apollo
       .mutate<AddCommentMutation, AddCommentMutationVariables>({ mutation: AddCommentDocument, variables: { taskId: card.id, body: body.trim() } })
-      .subscribe({ next: () => this.refetchBoard(), error: () => this.toast.error('Comment failed.') });
+      .subscribe({
+        next: ({ data }) => {
+          const comment = data?.addComment;
+          const view = this.view();
+          if (comment && view) this.view.set(applyComment(view, comment));
+        },
+        error: () => this.toast.error('Comment failed.'),
+      });
   }
 
   simulateFailure(): void {
@@ -306,23 +347,26 @@ export class BoardFacade {
           if (event.clientMutationId && this.pendingMutationIds.has(event.clientMutationId)) {
             this.pendingMutationIds.delete(event.clientMutationId);
             if (taskId) this.pendingTaskIds.delete(taskId);
-            this.dismissConflict(taskId ?? '');
-            this.refetchBoard();
             return;
           }
           if (taskId && this.pendingTaskIds.has(taskId)) {
             this.pendingTaskIds.delete(taskId);
-            this.dismissConflict(taskId);
-            this.refetchBoard();
             return;
+          }
+          const view = this.view();
+          if (view) {
+            const updated = applyBoardEvent(view, event);
+            if (updated) this.view.set(updated);
           }
           const selected = this.selectedCard();
           if (selected && event.task?.id === selected.id && event.task.version > selected.version) {
             this.registerConflict(selected.id, selected.version, event.task);
           }
+        },
+        error: () => {
+          this.toast.warning('Live updates disconnected.', 'subscription:board');
           this.refetchBoard();
         },
-        error: () => this.toast.warning('Live updates disconnected.', 'subscription:board'),
       });
   }
 
@@ -336,6 +380,37 @@ export class BoardFacade {
     if (snapshot) this.view.set(snapshot);
     this.refetchBoard();
     this.toast.error(`${message} Changes reverted.`, key ?? `rollback:${message}`);
+  }
+
+  private reconcileCreatedCardFromServer(task: NonNullable<CreateTaskMutation['createTask']>): void {
+    const view = this.view();
+    if (!view) return;
+    let tempId: string | null = null;
+    for (const list of view.lists) {
+      for (const card of list.cards) {
+        if (card.id.startsWith('temp-') && list.id === task.listId) {
+          tempId = card.id;
+          break;
+        }
+      }
+      if (tempId) break;
+    }
+    this.view.set(reconcileCreatedCard(view, task));
+    if (tempId && this.selectedCardId() === tempId) {
+      this.selectedCardId.set(task.id);
+    }
+  }
+
+  private reconcileServerTask(task: NonNullable<UpdateTaskMutation['updateTask']['task']>): void {
+    const view = this.view();
+    if (!view) return;
+    this.view.set(reconcileTask(view, task));
+  }
+
+  private reconcileServerList(list: NonNullable<UpdateListMutation['updateList']['list']>): void {
+    const view = this.view();
+    if (!view) return;
+    this.view.set(applyListUpdated(view, list));
   }
 
   private registerConflict(taskId: string, localVersion: number, remoteTask: CardConflict['remoteTask']): void {

@@ -5,7 +5,7 @@ import { graphql, parse, subscribe } from 'graphql';
 import type { Pool } from 'pg';
 import { DataType, newDb } from 'pg-mem';
 import type { AuthUser } from './auth/auth.js';
-import type { BoardEvent, TaskEvent } from './tasks/repository.js';
+import type { BoardEvent, TaskEvent } from './domain/repository.js';
 import { TaskEventType } from './types.js';
 
 process.env.NODE_ENV = 'test';
@@ -240,7 +240,7 @@ test('simulateNetworkFailure returns rollback-friendly GraphQL errors', async ()
 
 test('taskChanged subscriptions reject missing auth and yield events when authenticated', async () => {
   const pool = await createTestPool();
-  const task = await import('./tasks/repository.js').then((repo) => repo.createTask(pool, { title: 'Event task' }, user));
+  const task = await import('./domain/repository.js').then((repo) => repo.createTask(pool, { title: 'Event task' }, user));
   const event: TaskEvent = { type: TaskEventType.CREATED, task };
   const schema = createExecutableTaskSchema({
     db: pool,

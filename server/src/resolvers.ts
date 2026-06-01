@@ -34,7 +34,7 @@ import {
   updateTask,
   type BoardEvent,
   type TaskEvent,
-} from './tasks/repository.js';
+} from './domain/repository.js';
 import {
   BoardEventType,
   CreateBoardInput,
@@ -291,13 +291,22 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         ensureMutationAllowed();
         const item = await createChecklistItem(deps.db, taskId, text, user);
         const task = await getTask(deps.db, taskId);
-        if (task) await publishCardEvents(deps, BoardEventType.CHECKLIST_UPDATED, task);
+        if (task) {
+          await deps.publishBoardEvent({ type: BoardEventType.CHECKLIST_UPDATED, boardId: task.boardId, task, checklistItem: item });
+        }
         return item;
       },
       updateChecklistItem: async (_: unknown, { id, text, checked }: { id: string; text?: string | null; checked?: boolean | null }, context: GraphQLContext) => {
         const user = requireUser(context);
         ensureMutationAllowed();
-        return updateChecklistItem(deps.db, id, text, checked, user);
+        const item = await updateChecklistItem(deps.db, id, text, checked, user);
+        if (item) {
+          const task = await getTask(deps.db, item.taskId);
+          if (task) {
+            await deps.publishBoardEvent({ type: BoardEventType.CHECKLIST_UPDATED, boardId: task.boardId, task, checklistItem: item });
+          }
+        }
+        return item;
       },
       addComment: async (_: unknown, { taskId, body }: { taskId: string; body: string }, context: GraphQLContext) => {
         const user = requireUser(context);

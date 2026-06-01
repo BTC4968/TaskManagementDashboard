@@ -65,6 +65,7 @@ export type BoardEvent = {
   actorId?: Maybe<Scalars['String']['output']>;
   actorName?: Maybe<Scalars['String']['output']>;
   boardId: Scalars['ID']['output'];
+  checklistItem?: Maybe<ChecklistItem>;
   clientMutationId?: Maybe<Scalars['String']['output']>;
   comment?: Maybe<TaskComment>;
   label?: Maybe<Label>;
@@ -581,7 +582,7 @@ export type BoardChangedSubscriptionVariables = Exact<{
 }>;
 
 
-export type BoardChangedSubscription = { __typename?: 'Subscription', boardChanged: { __typename?: 'BoardEvent', type: BoardEventType, boardId: string, clientMutationId?: string | null, actorId?: string | null, actorName?: string | null, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null, label?: { __typename?: 'Label', id: string, boardId: string, name: string, color: string } | null, comment?: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } | null, activity?: { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string } | null } };
+export type BoardChangedSubscription = { __typename?: 'Subscription', boardChanged: { __typename?: 'BoardEvent', type: BoardEventType, boardId: string, clientMutationId?: string | null, actorId?: string | null, actorName?: string | null, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null, label?: { __typename?: 'Label', id: string, boardId: string, name: string, color: string } | null, comment?: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } | null, checklistItem?: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } | null, activity?: { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string } | null } };
 
 export const BoardFieldsFragmentDoc = gql`
     fragment BoardFields on Board {
@@ -1035,6 +1036,9 @@ export const BoardChangedDocument = gql`
     comment {
       ...CommentFields
     }
+    checklistItem {
+      ...ChecklistItemFields
+    }
     activity {
       ...ActivityFields
     }
@@ -1043,6 +1047,7 @@ export const BoardChangedDocument = gql`
     ${TaskFieldsFragmentDoc}
 ${LabelFieldsFragmentDoc}
 ${CommentFieldsFragmentDoc}
+${ChecklistItemFieldsFragmentDoc}
 ${ActivityFieldsFragmentDoc}`;
 
   @Injectable({
