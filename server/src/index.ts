@@ -1,58 +1,95 @@
-import { config as loadEnv } from 'dotenv';
 import { createServer } from 'node:http';
-import { createYoga } from 'graphql-yoga';
-import { useServer } from 'graphql-ws/use/ws';
-import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import express from 'express';
+import { useServer } from 'graphql-ws/use/ws';
+import { createYoga } from 'graphql-yoga';
+import { WebSocketServer } from 'ws';
+import { authenticateConnectionParams } from './auth/auth.js';
+import { env } from './config/env.js';
+import { runMigrations } from './db/migrations.js';
+import { closePool, pool } from './db/pool.js';
+import { createHttpContext, createWsContext, type GraphQLContext } from './graphql/context.js';
 import { schema } from './resolvers.js';
-import './seed.js';
+import { taskEventStream } from './subscriptions/task-events.js';
 
-loadEnv();
+const expressCorsOrigin: string | string[] | boolean = env.corsOrigins.length ? env.corsOrigins : true;
+const yogaCorsOrigin: string | string[] | undefined = env.corsOrigins.length ? env.corsOrigins : undefined;
 
-const PORT = Number(process.env.PORT) || 4000;
-const HOST = process.env.HOST ?? '0.0.0.0';
-const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean);
-const yogaCorsOrigin: string | string[] = corsOrigins?.length ? corsOrigins : '*';
-
-const yoga = createYoga({
+const yoga = createYoga<GraphQLContext>({
   schema,
   graphqlEndpoint: '/graphql',
-  landingPage: true,
+  landingPage: env.nodeEnv !== 'production',
   cors: {
     origin: yogaCorsOrigin,
     credentials: true,
   },
+  context: ({ request }) => createHttpContext(request),
 });
 
 const app = express();
 app.use(
   cors({
-    origin: corsOrigins?.length ? corsOrigins : true,
+    origin: expressCorsOrigin,
     credentials: true,
   }),
 );
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
-app.use(yoga);
+app.use(yoga as unknown as express.RequestHandler);
 
 const httpServer = createServer(app);
-
 const wsServer = new WebSocketServer({
   server: httpServer,
   path: '/graphql',
 });
 
-useServer(
+const wsCleanup = useServer(
   {
     schema,
-    onConnect: () => true,
+    context: (ctx) => createWsContext(ctx.connectionParams),
+    onConnect: async (ctx) => {
+      const user = await authenticateConnectionParams(ctx.connectionParams);
+      if (!user) {
+        throw new Error('Authentication required');
+      }
+      return true;
+    },
   },
   wsServer,
 );
 
-httpServer.listen(PORT, HOST, () => {
-  console.log(`GraphQL API ready at http://localhost:${PORT}/graphql`);
-  console.log(`WebSocket subscriptions at ws://localhost:${PORT}/graphql`);
+let shuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
+  console.log(`Received ${signal}. Shutting down API server.`);
+
+  await wsCleanup.dispose();
+  await new Promise<void>((resolve, reject) => {
+    wsServer.close((error) => (error ? reject(error) : resolve()));
+  });
+  await new Promise<void>((resolve, reject) => {
+    httpServer.close((error) => (error ? reject(error) : resolve()));
+  });
+  await taskEventStream.stop();
+  await closePool();
+}
+
+process.on('SIGINT', () => {
+  void shutdown('SIGINT').then(() => process.exit(0));
+});
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM').then(() => process.exit(0));
+});
+
+await runMigrations(pool);
+await taskEventStream.start();
+
+httpServer.listen(env.port, env.host, () => {
+  console.log(`GraphQL API ready at http://${env.host}:${env.port}/graphql`);
+  console.log(`WebSocket subscriptions at ws://${env.host}:${env.port}/graphql`);
 });

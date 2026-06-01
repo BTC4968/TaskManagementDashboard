@@ -1,0 +1,32 @@
+<section class="list" [class.list--drop-active]="dropActive()">
+  <header cdkDragHandle>
+    <h2>{{ list().title }}</h2>
+    <span>{{ list().cards.length }}</span>
+  </header>
+
+  <div
+    class="cards u-scrollbar"
+    cdkDropList
+    [id]="list().id"
+    [cdkDropListData]="list().cards"
+    [cdkDropListConnectedTo]="connectedTo()"
+    [class.cards--empty]="!list().cards.length"
+    [class.cards--active]="dropActive()"
+    (cdkDropListEntered)="dropActive.set(true)"
+    (cdkDropListExited)="dropActive.set(false)"
+    (cdkDropListDropped)="dropActive.set(false); cardDropped.emit($event)"
+  >
+    @for (card of list().cards; track card.id) {
+      <app-board-card
+        cdkDrag
+        [cdkDragData]="card"
+        [card]="card"
+        [conflicted]="conflictIds().has(card.id)"
+        (open)="openCard.emit($event)"
+        (archive)="archiveCard.emit($event)"
+      />
+    }
+  </div>
+
+  <app-card-composer (create)="createCard.emit({ list: list(), title: $event })" />
+</section>

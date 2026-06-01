@@ -1,0 +1,88 @@
+.card {
+  display: grid;
+  gap: 6px;
+  border-radius: var(--radius-2);
+  background: var(--surface-card);
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background var(--motion-fast), box-shadow var(--motion-card), transform var(--motion-card);
+}
+
+.card:hover,
+.card:focus-visible {
+  background: var(--surface-card-hover);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.card--conflict {
+  box-shadow: inset 4px 0 0 var(--warning), var(--shadow-card);
+}
+
+.cover {
+  height: 32px;
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 8px 0;
+}
+
+.label {
+  width: 40px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+}
+
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px;
+}
+
+h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.card:hover button,
+button:focus-visible {
+  opacity: 1;
+}
+
+footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+strong {
+  color: #7f5f01;
+}

@@ -1,0 +1,9 @@
+@import '../../styles/index';
+
+.card {
+  @include card-base;
+
+  &--elevated {
+    @include card-elevated;
+  }
+}

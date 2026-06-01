@@ -1,53 +1,167 @@
-query Tasks(
-  $page: Int!
-  $pageSize: Int!
-  $filter: TaskFilterInput
-  $sort: [TaskSortInput!]
-) {
-  tasks(page: $page, pageSize: $pageSize, filter: $filter, sort: $sort) {
-    nodes {
-      id
-      title
-      description
-      status
-      priority
-      assignee
-      version
-      updatedAt
+fragment BoardFields on Board {
+  id
+  title
+  description
+  background
+  version
+  createdAt
+  updatedAt
+}
+
+fragment LabelFields on Label {
+  id
+  boardId
+  name
+  color
+}
+
+fragment ChecklistItemFields on ChecklistItem {
+  id
+  taskId
+  text
+  checked
+  position
+}
+
+fragment CommentFields on TaskComment {
+  id
+  taskId
+  body
+  author
+  createdAt
+}
+
+fragment ActivityFields on ActivityItem {
+  id
+  taskId
+  type
+  message
+  actor
+  createdAt
+}
+
+fragment CardFields on BoardCard {
+  id
+  boardId
+  listId
+  title
+  description
+  status
+  priority
+  assignee
+  position
+  dueDate
+  coverColor
+  archived
+  version
+  updatedAt
+  labels {
+    ...LabelFields
+  }
+  checklist {
+    ...ChecklistItemFields
+  }
+  comments {
+    ...CommentFields
+  }
+}
+
+fragment TaskFields on Task {
+  id
+  boardId
+  listId
+  title
+  description
+  status
+  priority
+  assignee
+  position
+  dueDate
+  coverColor
+  archived
+  version
+  updatedAt
+}
+
+fragment ListFields on BoardList {
+  id
+  boardId
+  title
+  status
+  position
+  archived
+  version
+  createdAt
+  updatedAt
+  cards {
+    ...CardFields
+  }
+}
+
+query DefaultBoard {
+  defaultBoard {
+    ...BoardFields
+  }
+}
+
+query Boards {
+  boards {
+    ...BoardFields
+  }
+}
+
+query BoardView($boardId: ID!) {
+  boardView(boardId: $boardId) {
+    board {
+      ...BoardFields
     }
-    totalCount
-    pageInfo {
-      page
-      pageSize
-      hasNextPage
-      hasPreviousPage
+    lists {
+      ...ListFields
+    }
+    labels {
+      ...LabelFields
+    }
+    activity {
+      ...ActivityFields
     }
   }
 }
 
-query Task($id: ID!) {
-  task(id: $id) {
+mutation CreateList($input: CreateListInput!) {
+  createList(input: $input) {
     id
+    boardId
     title
-    description
     status
-    priority
-    assignee
+    position
+    archived
     version
+    createdAt
     updatedAt
+  }
+}
+
+mutation UpdateList($id: ID!, $input: UpdateListInput!, $expectedVersion: Int) {
+  updateList(id: $id, input: $input, expectedVersion: $expectedVersion) {
+    success
+    conflict
+    list {
+      id
+      boardId
+      title
+      status
+      position
+      archived
+      version
+      createdAt
+      updatedAt
+    }
   }
 }
 
 mutation CreateTask($input: CreateTaskInput!) {
   createTask(input: $input) {
-    id
-    title
-    description
-    status
-    priority
-    assignee
-    version
-    updatedAt
+    ...TaskFields
   }
 }
 
@@ -56,38 +170,94 @@ mutation UpdateTask($id: ID!, $input: UpdateTaskInput!, $expectedVersion: Int) {
     success
     conflict
     task {
-      id
-      title
-      description
-      status
-      priority
-      assignee
-      version
-      updatedAt
+      ...TaskFields
     }
   }
 }
 
-mutation DeleteTask($id: ID!) {
-  deleteTask(id: $id)
+mutation MoveTask($input: MoveTaskInput!) {
+  moveTask(input: $input) {
+    success
+    conflict
+    task {
+      ...TaskFields
+    }
+  }
+}
+
+mutation DeleteTask($id: ID!, $expectedVersion: Int) {
+  deleteTask(id: $id, expectedVersion: $expectedVersion) {
+    success
+    conflict
+    task {
+      ...TaskFields
+    }
+  }
+}
+
+mutation CreateLabel($boardId: ID!, $name: String, $color: String!) {
+  createLabel(boardId: $boardId, name: $name, color: $color) {
+    ...LabelFields
+  }
+}
+
+mutation SetTaskLabels($taskId: ID!, $labelIds: [ID!]!) {
+  setTaskLabels(taskId: $taskId, labelIds: $labelIds) {
+    ...TaskFields
+  }
+}
+
+mutation CreateChecklistItem($taskId: ID!, $text: String!) {
+  createChecklistItem(taskId: $taskId, text: $text) {
+    ...ChecklistItemFields
+  }
+}
+
+mutation UpdateChecklistItem($id: ID!, $text: String, $checked: Boolean) {
+  updateChecklistItem(id: $id, text: $text, checked: $checked) {
+    ...ChecklistItemFields
+  }
+}
+
+mutation AddComment($taskId: ID!, $body: String!) {
+  addComment(taskId: $taskId, body: $body) {
+    ...CommentFields
+  }
 }
 
 mutation SimulateNetworkFailure {
   simulateNetworkFailure
 }
 
-subscription TaskChanged {
-  taskChanged {
+subscription BoardChanged($boardId: ID!) {
+  boardChanged(boardId: $boardId) {
     type
+    boardId
+    clientMutationId
+    actorId
+    actorName
     task {
+      ...TaskFields
+    }
+    list {
       id
+      boardId
       title
-      description
       status
-      priority
-      assignee
+      position
+      archived
       version
+      createdAt
       updatedAt
+    }
+    label {
+      ...LabelFields
+    }
+    comment {
+      ...CommentFields
+    }
+    activity {
+      ...ActivityFields
     }
   }
 }

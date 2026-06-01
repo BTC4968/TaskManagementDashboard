@@ -15,6 +15,21 @@ enum TaskEventType {
   DELETED
 }
 
+enum BoardEventType {
+  BOARD_UPDATED
+  LIST_CREATED
+  LIST_UPDATED
+  LIST_ARCHIVED
+  CARD_CREATED
+  CARD_UPDATED
+  CARD_MOVED
+  CARD_ARCHIVED
+  CARD_DELETED
+  LABEL_UPDATED
+  CHECKLIST_UPDATED
+  COMMENT_CREATED
+}
+
 input TaskFilterInput {
   status: TaskStatus
   search: String
@@ -26,30 +41,178 @@ input TaskSortInput {
 }
 
 input CreateTaskInput {
+  boardId: ID
+  listId: ID
   title: String!
   description: String
   status: TaskStatus
   priority: Int
   assignee: String
+  position: Float
+  dueDate: String
+  coverColor: String
 }
 
 input UpdateTaskInput {
+  listId: ID
   title: String
   description: String
   status: TaskStatus
   priority: Int
   assignee: String
+  position: Float
+  dueDate: String
+  coverColor: String
+  archived: Boolean
+  clientMutationId: String
+}
+
+input CreateBoardInput {
+  title: String!
+  description: String
+  background: String
+}
+
+input UpdateBoardInput {
+  title: String
+  description: String
+  background: String
+}
+
+input CreateListInput {
+  boardId: ID!
+  title: String!
+  status: TaskStatus
+  position: Float
+}
+
+input UpdateListInput {
+  title: String
+  status: TaskStatus
+  position: Float
+  archived: Boolean
+  clientMutationId: String
+}
+
+input MoveTaskInput {
+  boardId: ID!
+  taskId: ID!
+  toListId: ID!
+  position: Float!
+  status: TaskStatus
+  expectedVersion: Int
+  clientMutationId: String
 }
 
 type Task {
   id: ID!
+  boardId: ID!
+  listId: ID!
   title: String!
   description: String
   status: TaskStatus!
   priority: Int!
   assignee: String
+  position: Float!
+  dueDate: String
+  coverColor: String
+  archived: Boolean!
   version: Int!
   updatedAt: String!
+}
+
+type Board {
+  id: ID!
+  title: String!
+  description: String
+  background: String!
+  version: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type TaskList {
+  id: ID!
+  boardId: ID!
+  title: String!
+  status: TaskStatus
+  position: Float!
+  archived: Boolean!
+  version: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Label {
+  id: ID!
+  boardId: ID!
+  name: String!
+  color: String!
+}
+
+type ChecklistItem {
+  id: ID!
+  taskId: ID!
+  text: String!
+  checked: Boolean!
+  position: Float!
+}
+
+type TaskComment {
+  id: ID!
+  taskId: ID!
+  body: String!
+  author: String!
+  createdAt: String!
+}
+
+type ActivityItem {
+  id: ID!
+  taskId: ID
+  type: String!
+  message: String!
+  actor: String!
+  createdAt: String!
+}
+
+type BoardCard {
+  id: ID!
+  boardId: ID!
+  listId: ID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: Int!
+  assignee: String
+  position: Float!
+  dueDate: String
+  coverColor: String
+  archived: Boolean!
+  version: Int!
+  updatedAt: String!
+  labels: [Label!]!
+  checklist: [ChecklistItem!]!
+  comments: [TaskComment!]!
+}
+
+type BoardList {
+  id: ID!
+  boardId: ID!
+  title: String!
+  status: TaskStatus
+  position: Float!
+  archived: Boolean!
+  version: Int!
+  createdAt: String!
+  updatedAt: String!
+  cards: [BoardCard!]!
+}
+
+type BoardView {
+  board: Board!
+  lists: [BoardList!]!
+  labels: [Label!]!
+  activity: [ActivityItem!]!
 }
 
 type PageInfo {
@@ -70,17 +233,56 @@ type TaskEvent {
   task: Task!
 }
 
+type BoardEvent {
+  type: BoardEventType!
+  boardId: ID!
+  clientMutationId: String
+  actorId: String
+  actorName: String
+  task: Task
+  list: TaskList
+  label: Label
+  comment: TaskComment
+  activity: ActivityItem
+}
+
 type Query {
+  boards: [Board!]!
+  board(id: ID!): Board
+  defaultBoard: Board
+  boardView(boardId: ID!): BoardView
   tasks(page: Int! = 1, pageSize: Int! = 10, filter: TaskFilterInput, sort: [TaskSortInput!]): TaskConnection!
   task(id: ID!): Task
   health: String!
 }
 
 type Mutation {
+  createBoard(input: CreateBoardInput!): Board!
+  updateBoard(id: ID!, input: UpdateBoardInput!, expectedVersion: Int): BoardMutationResult!
+  createList(input: CreateListInput!): TaskList!
+  updateList(id: ID!, input: UpdateListInput!, expectedVersion: Int): ListMutationResult!
   createTask(input: CreateTaskInput!): Task!
   updateTask(id: ID!, input: UpdateTaskInput!, expectedVersion: Int): TaskUpdateResult!
-  deleteTask(id: ID!): Boolean!
+  moveTask(input: MoveTaskInput!): TaskUpdateResult!
+  deleteTask(id: ID!, expectedVersion: Int): TaskDeleteResult!
+  createLabel(boardId: ID!, name: String, color: String!): Label!
+  setTaskLabels(taskId: ID!, labelIds: [ID!]!): Task
+  createChecklistItem(taskId: ID!, text: String!): ChecklistItem!
+  updateChecklistItem(id: ID!, text: String, checked: Boolean): ChecklistItem
+  addComment(taskId: ID!, body: String!): TaskComment!
   simulateNetworkFailure: Boolean!
+}
+
+type BoardMutationResult {
+  success: Boolean!
+  conflict: Boolean!
+  board: Board
+}
+
+type ListMutationResult {
+  success: Boolean!
+  conflict: Boolean!
+  list: TaskList
 }
 
 type TaskUpdateResult {
@@ -89,6 +291,13 @@ type TaskUpdateResult {
   task: Task
 }
 
+type TaskDeleteResult {
+  success: Boolean!
+  conflict: Boolean!
+  task: Task
+}
+
 type Subscription {
   taskChanged: TaskEvent!
+  boardChanged(boardId: ID!): BoardEvent!
 }

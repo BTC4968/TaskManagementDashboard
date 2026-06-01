@@ -1,0 +1,85 @@
+@import '../../styles/index';
+
+.modal-backdrop {
+  @include backdrop;
+}
+
+.modal-container {
+  @include modal-container;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+  padding: $padding-xl;
+  overflow-y: auto;
+  @include custom-scrollbar;
+
+  &--sm {
+    max-width: 400px;
+  }
+
+  &--md {
+    max-width: 600px;
+  }
+
+  &--lg {
+    max-width: 800px;
+  }
+
+  @include on-mobile {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: $padding-lg;
+  }
+}
+
+.modal-header {
+  @include flex-between;
+  gap: $gap-lg;
+  border-bottom: $border-default;
+  padding-bottom: $padding-md;
+
+  h2 {
+    margin: 0;
+    @include h3;
+  }
+}
+
+.modal-close {
+  @include flex-center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  color: $color-text-secondary;
+  transition: $transition-color;
+  border-radius: $radius-md;
+  flex-shrink: 0;
+
+  &:hover {
+    color: $color-text-primary;
+    background-color: $slate-100;
+  }
+
+  &:focus {
+    outline: none;
+    @include focus-ring;
+  }
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  @include custom-scrollbar;
+}

@@ -1,0 +1,13 @@
+:host {
+  display: block;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.board-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-inverse);
+  overflow: hidden;
+}

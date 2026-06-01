@@ -1,0 +1,23 @@
+@import '../../styles/index';
+
+.input-wrapper {
+  @include form-group;
+}
+
+.input-label {
+  @include label-base;
+}
+
+.input-field {
+  @include input-base;
+
+  &.input-error {
+    @include input-error;
+  }
+}
+
+.input-error-message {
+  @include text-hint;
+  color: var(--color-danger);
+  margin: 0;
+}

@@ -1,0 +1,50 @@
+<div class="canvas u-scrollbar">
+  @if (loading() && !lists().length) {
+    @for (item of [1, 2, 3]; track item) {
+      <div class="list-skeleton"></div>
+    }
+  } @else {
+    <div
+      class="lists"
+      cdkDropList
+      cdkDropListOrientation="horizontal"
+      [cdkDropListData]="lists()"
+      (cdkDropListDropped)="onListDrop($event)"
+    >
+      @for (list of lists(); track list.id) {
+        <app-board-list
+          cdkDrag
+          [cdkDragData]="list"
+          [list]="list"
+          [connectedTo]="connectedIds()"
+          [conflicts]="conflicts()"
+          (createCard)="createCard.emit($event)"
+          (cardDropped)="onDrop($event)"
+          (openCard)="openCard.emit($event)"
+          (archiveCard)="archiveCard.emit($event)"
+        />
+      }
+    </div>
+  }
+
+  <div class="add-list">
+    @if (addingList()) {
+      <form (ngSubmit)="submitList()">
+        <input
+          name="listTitle"
+          [ngModel]="listTitle()"
+          (ngModelChange)="listTitle.set($event)"
+          placeholder="Enter list title..."
+          autofocus
+          (keydown.escape)="addingList.set(false)"
+        />
+        <div>
+          <button type="submit">Add list</button>
+          <button type="button" class="cancel" (click)="addingList.set(false)">×</button>
+        </div>
+      </form>
+    } @else {
+      <button type="button" class="open-add-list" (click)="addingList.set(true)">+ Add another list</button>
+    }
+  </div>
+</div>

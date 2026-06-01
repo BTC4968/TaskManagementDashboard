@@ -1,0 +1,53 @@
+.board-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+  flex: 0 0 auto;
+}
+
+.board-title {
+  min-width: 0;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.board-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.live-pill,
+.header-button {
+  border: 0;
+  border-radius: var(--radius-2);
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.header-button {
+  cursor: pointer;
+}
+
+.header-button:hover {
+  background: rgba(255, 255, 255, 0.28);
+}

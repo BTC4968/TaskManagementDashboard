@@ -1,0 +1,19 @@
+@if (open()) {
+  <form class="composer" (ngSubmit)="submit()">
+    <textarea
+      name="title"
+      [ngModel]="title()"
+      (ngModelChange)="title.set($event)"
+      [placeholder]="placeholder()"
+      rows="3"
+      autofocus
+      (keydown.escape)="cancel()"
+    ></textarea>
+    <div class="composer-actions">
+      <button type="submit" class="primary">Add card</button>
+      <button type="button" class="close" aria-label="Cancel" (click)="cancel()">×</button>
+    </div>
+  </form>
+} @else {
+  <button type="button" class="open-composer" (click)="open.set(true)">{{ addLabel() }}</button>
+}

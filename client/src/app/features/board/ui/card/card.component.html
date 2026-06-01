@@ -1,0 +1,41 @@
+<article
+  class="card"
+  [class.card--conflict]="conflicted()"
+  (click)="open.emit(card())"
+  tabindex="0"
+  (keydown.enter)="open.emit(card())"
+>
+  @if (card().coverColor) {
+    <div class="cover" [style.background]="card().coverColor"></div>
+  }
+  @if (card().labels.length) {
+    <div class="labels">
+      @for (label of card().labels; track label.id) {
+        <span class="label" [style.background]="label.color" [title]="label.name"></span>
+      }
+    </div>
+  }
+  <div class="title-row">
+    <h3>{{ card().title }}</h3>
+    <button type="button" aria-label="Archive card" (click)="$event.stopPropagation(); archive.emit(card())">×</button>
+  </div>
+  @if (card().description || card().dueDate || card().comments.length || checklistProgress()) {
+    <footer>
+      @if (card().description) {
+        <span title="Description">☰</span>
+      }
+      @if (card().dueDate) {
+        <span class="due">{{ card().dueDate }}</span>
+      }
+      @if (checklistProgress()) {
+        <span>{{ checklistProgress() }}</span>
+      }
+      @if (card().comments.length) {
+        <span>{{ card().comments.length }}</span>
+      }
+      @if (conflicted()) {
+        <strong>Conflict</strong>
+      }
+    </footer>
+  }
+</article>

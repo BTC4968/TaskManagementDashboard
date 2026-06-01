@@ -1,0 +1,29 @@
+@import '../../styles/index';
+
+.badge {
+  @include badge-base;
+
+  &--todo {
+    @include badge-status('todo');
+  }
+
+  &--in-progress {
+    @include badge-status('in-progress');
+  }
+
+  &--done {
+    @include badge-status('done');
+  }
+
+  &--primary {
+    @include badge-variant(var(--color-primary-light), var(--color-primary-dark));
+  }
+
+  &--danger {
+    @include badge-variant(var(--color-danger-light), var(--color-danger));
+  }
+
+  &--warning {
+    @include badge-variant(var(--color-warning-light), var(--color-warning));
+  }
+}

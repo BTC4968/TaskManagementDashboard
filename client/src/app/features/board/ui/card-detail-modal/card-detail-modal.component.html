@@ -1,0 +1,119 @@
+@if (card(); as current) {
+  <div class="backdrop" (click)="close.emit()"></div>
+  <section class="modal" role="dialog" aria-modal="true" aria-label="Card details" (keydown.escape)="close.emit()">
+    <button type="button" class="close" aria-label="Close card" (click)="close.emit()">×</button>
+
+    @if (current.coverColor) {
+      <div class="cover" [style.background]="current.coverColor"></div>
+    }
+
+    @if (activeConflict(); as conflict) {
+      <div class="conflict">
+        <strong>Conflict detected</strong>
+        <span>Server version {{ conflict.remoteVersion }} is newer than your version {{ conflict.localVersion }}.</span>
+        <button type="button" (click)="dismissConflict.emit(conflict.taskId)">Dismiss</button>
+      </div>
+    }
+
+    <div class="content">
+      <main>
+        <input class="title" [ngModel]="title()" (ngModelChange)="title.set($event)" (blur)="save()" />
+
+        <section>
+          <h2>Description</h2>
+          <textarea
+            [ngModel]="description()"
+            (ngModelChange)="description.set($event)"
+            (blur)="save()"
+            placeholder="Add a more detailed description..."
+            rows="5"
+          ></textarea>
+        </section>
+
+        <section>
+          <h2>Checklist</h2>
+          <div class="checklist">
+            @for (item of current.checklist; track item.id) {
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="item.checked"
+                  (change)="toggleChecklistItem.emit({ id: item.id, checked: $any($event.target).checked })"
+                />
+                <span [class.done]="item.checked">{{ item.text }}</span>
+              </label>
+            }
+          </div>
+          <form class="inline-form" (ngSubmit)="submitChecklist()">
+            <input [ngModel]="checklistText()" name="checklistText" (ngModelChange)="checklistText.set($event)" placeholder="Add an item" />
+            <button type="submit">Add</button>
+          </form>
+        </section>
+
+        <section>
+          <h2>Comments</h2>
+          <form class="comment-form" (ngSubmit)="submitComment()">
+            <textarea [ngModel]="commentBody()" name="commentBody" (ngModelChange)="commentBody.set($event)" placeholder="Write a comment..." rows="3"></textarea>
+            <button type="submit">Save</button>
+          </form>
+          <div class="comments">
+            @for (comment of current.comments; track comment.id) {
+              <article>
+                <strong>{{ comment.author }}</strong>
+                <p>{{ comment.body }}</p>
+              </article>
+            }
+          </div>
+        </section>
+      </main>
+
+      <aside>
+        <h2>Card</h2>
+        <label>
+          Assignee
+          <input [ngModel]="assignee()" (ngModelChange)="assignee.set($event)" (blur)="save()" placeholder="Name or email" />
+        </label>
+        <label>
+          Due date
+          <input type="date" [ngModel]="dueDate()" (ngModelChange)="dueDate.set($event)" (blur)="save()" />
+        </label>
+        <label>
+          Priority
+          <input type="number" min="1" max="5" [ngModel]="priority()" (ngModelChange)="priority.set($event)" (blur)="save()" />
+        </label>
+        <label>
+          Cover color
+          <input
+            type="color"
+            [ngModel]="coverColor() || '#579dff'"
+            (input)="coverColor.set($any($event.target).value)"
+            (change)="commitCoverColor($any($event.target).value)"
+          />
+        </label>
+
+        @if (current.labels.length) {
+          <div class="modal-labels">
+            @for (label of current.labels; track label.id) {
+              <span [style.background]="label.color">{{ label.name || 'Label' }}</span>
+            }
+          </div>
+        }
+
+        <button type="button" class="danger" (click)="archiveCard.emit(current); close.emit()">Archive</button>
+
+        <h2>Activity</h2>
+        <div class="activity">
+          @for (group of cardActivity(); track group.entry.id) {
+            <p>
+              <strong>{{ displayActor(group.entry.actor) }}</strong>
+              {{ displayActivity(group.entry.message) }}
+              @if (group.count > 1) {
+                <span class="activity-count">×{{ group.count }}</span>
+              }
+            </p>
+          }
+        </div>
+      </aside>
+    </div>
+  </section>
+}

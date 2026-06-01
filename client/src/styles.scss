@@ -1,3 +1,7 @@
+@use './app/shared/styles/theme-tokens';
+@use './app/shared/styles/motion.scss';
+@use './app/shared/styles/utilities.scss';
+
 *,
 *::before,
 *::after {
@@ -7,23 +11,28 @@
 html,
 body {
   margin: 0;
-  padding: 0;
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+  min-height: 100%;
+  font-family: var(--font-sans);
+  background: var(--surface-app);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  overflow: hidden;
 }
 
 button,
 input,
-select,
-textarea {
-  font-family: inherit;
+textarea,
+select {
+  font: inherit;
 }
 
-code {
-  font-size: 0.85em;
-  background: #f1f5f9;
-  padding: 0.1em 0.35em;
-  border-radius: 4px;
+button {
+  color: inherit;
+}
+
+a {
+  color: inherit;
 }

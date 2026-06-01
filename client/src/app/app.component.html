@@ -1,0 +1,15 @@
+<div class="app-shell">
+  <nav class="app-bar">
+    <a class="brand" href="/">Project Board</a>
+    <div class="app-actions">
+      <button type="button" class="bar-button" (click)="theme.toggle()">
+        {{ theme.theme() === 'dark' ? 'Light' : 'Dark' }}
+      </button>
+      @if (auth.isAuthenticated$ | async) {
+        <button type="button" class="bar-button" (click)="logout()">Sign out</button>
+      }
+    </div>
+  </nav>
+  <router-outlet />
+  <app-toast-container />
+</div>

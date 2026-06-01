@@ -1,0 +1,12 @@
+<header class="board-header">
+  <div class="board-title">
+    <h1>{{ board()?.title || (loading() ? 'Loading board' : 'Board') }}</h1>
+    @if (board()?.description) {
+      <p>{{ board()?.description }}</p>
+    }
+  </div>
+  <div class="board-actions">
+    <span class="live-pill">Live</span>
+    <button type="button" class="header-button" (click)="simulateFailure.emit()">Fail next mutation</button>
+  </div>
+</header>

@@ -60,7 +60,7 @@ const devDefaults = {
   auth0Domain: 'YOUR_AUTH0_DOMAIN.auth0.com',
   auth0ClientId: 'YOUR_AUTH0_CLIENT_ID',
   auth0Audience: 'https://task-dashboard-api',
-  devAuthBypass: true,
+  devAuthBypass: false,
 };
 
 const prodDefaults = {

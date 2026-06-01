@@ -1,0 +1,21 @@
+@if (open()) {
+  <div class="modal-backdrop" (click)="onBackdropClick()" role="presentation"></div>
+  <div class="modal-container" role="dialog" [attr.aria-modal]="true" [attr.aria-label]="title()">
+    <div [class]="'modal-content modal-content--' + size()">
+      <header class="modal-header">
+        <h2>{{ title() }}</h2>
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Close modal"
+          (click)="close.emit()"
+        >
+          ×
+        </button>
+      </header>
+      <div class="modal-body">
+        <ng-content />
+      </div>
+    </div>
+  </div>
+}

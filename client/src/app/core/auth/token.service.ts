@@ -3,7 +3,6 @@ import { AuthService } from '@auth0/auth0-angular';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
-const DEV_TOKEN = 'dev-bypass-token';
 const REFRESH_BUFFER_MS = 60_000;
 
 @Injectable({ providedIn: 'root' })
@@ -13,9 +12,6 @@ export class TokenService {
   private refreshPromise: Promise<string | null> | null = null;
 
   async getAccessToken(): Promise<string | null> {
-    if (environment.devAuthBypass) {
-      return DEV_TOKEN;
-    }
     if (!this.auth) {
       return null;
     }
@@ -30,11 +26,6 @@ export class TokenService {
   private cachedToken: string | null = null;
 
   async refreshAccessToken(): Promise<string | null> {
-    if (environment.devAuthBypass) {
-      this.cachedToken = DEV_TOKEN;
-      this.expiresAt.set(Date.now() + 3_600_000);
-      return DEV_TOKEN;
-    }
     if (!this.auth) {
       return null;
     }

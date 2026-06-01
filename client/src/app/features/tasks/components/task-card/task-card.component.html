@@ -1,0 +1,44 @@
+<div class="task-card" [class.task-card--conflict]="hasConflict()" (click)="click.emit()">
+  <div class="task-header">
+    <h4 class="task-title">{{ task().title }}</h4>
+    <button
+      type="button"
+      class="task-delete-btn"
+      aria-label="Delete task"
+      (click)="onDelete($event)"
+    >
+      ×
+    </button>
+  </div>
+
+  @if (task().description) {
+    <p class="task-description">{{ task().description }}</p>
+  }
+
+  <div class="task-footer">
+    <div class="task-badges">
+      <app-badge [variant]="statusBadgeVariant()">
+        @switch (task().status) {
+          @case ('TODO') {
+            Todo
+          }
+          @case ('IN_PROGRESS') {
+            In Progress
+          }
+          @case ('DONE') {
+            Done
+          }
+        }
+      </app-badge>
+      @if (task().priority) {
+        <app-badge variant="primary">P{{ task().priority }}</app-badge>
+      }
+      @if (hasConflict()) {
+        <app-badge variant="warning">Conflict</app-badge>
+      }
+    </div>
+    @if (task().assignee) {
+      <span class="task-assignee">👤 {{ task().assignee }}</span>
+    }
+  </div>
+</div>

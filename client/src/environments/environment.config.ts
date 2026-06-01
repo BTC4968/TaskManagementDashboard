@@ -43,7 +43,7 @@ const devCfg = {
   "graphqlHttpUri": "http://localhost:4000/graphql",
   "graphqlWsUri": "ws://localhost:4000/graphql",
   "auth0Domain": "dev-7a62dtp61wilsbm7.us.auth0.com",
-  "auth0ClientId": "P1FAQhNgqSVHPoI95irT3K9TxkuOiach",
+  "auth0ClientId": "BUMWe9erNoaSiYMC8uGqM3yy4MZUOuWL",
   "auth0Audience": "https://task-dashboard-api",
   "devAuthBypass": false
 };
@@ -51,10 +51,10 @@ const prodCfg = {
   "graphqlHttpUri": "http://localhost:4000/graphql",
   "graphqlWsUri": "ws://localhost:4000/graphql",
   "auth0Domain": "dev-7a62dtp61wilsbm7.us.auth0.com",
-  "auth0ClientId": "P1FAQhNgqSVHPoI95irT3K9TxkuOiach",
+  "auth0ClientId": "BUMWe9erNoaSiYMC8uGqM3yy4MZUOuWL",
   "auth0Audience": "https://task-dashboard-api",
-  "devAuthBypass": true
+  "devAuthBypass": false
 };
 
-export const developmentEnvironment = toEnvironment(devCfg, true);
-export const productionEnvironment = toEnvironment(prodCfg, false);
+export const developmentEnvironment = toEnvironment(devCfg, false);
+export const productionEnvironment = toEnvironment(prodCfg, true);

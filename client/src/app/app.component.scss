@@ -1,0 +1,52 @@
+.app-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-bar {
+  height: 44px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 6px 12px;
+  background: rgba(9, 30, 66, 0.82);
+  color: #fff;
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  border-radius: var(--radius-2);
+  padding: 6px 8px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.brand:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bar-button {
+  border: 0;
+  border-radius: var(--radius-2);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bar-button:hover {
+  background: rgba(255, 255, 255, 0.24);
+}

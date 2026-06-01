@@ -12,7 +12,7 @@ Enterprise Angular reference architecture for GraphQL, WebSocket subscriptions, 
 ## Prerequisites
 
 - **Node.js** 20+ and npm 10+
-- **Auth0** tenant (free tier) — optional for local dev when `devAuthBypass: true`
+- **Auth0** tenant (free tier) — required locally and in production
 - **Vercel** account for frontend CI/CD
 
 ## Environment variables
@@ -35,7 +35,7 @@ npm start
 | `AUTH0_DOMAIN` | Auth0 tenant domain |
 | `AUTH0_CLIENT_ID` | Auth0 SPA client ID |
 | `AUTH0_AUDIENCE` | Auth0 API identifier |
-| `DEV_AUTH_BYPASS` | `true` = skip Auth0 locally; `false` = real SSO |
+| `DEV_AUTH_BYPASS` | Must be `false`; backend requires real Auth0 JWTs |
 
 Generated file: `src/environments/environment.config.ts` (do not edit by hand; run `npm run env`).
 
@@ -48,9 +48,16 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `NODE_ENV` | `development` | Runtime mode |
 | `PORT` | `4000` | HTTP + WebSocket port |
 | `HOST` | `0.0.0.0` | Bind address |
+| `DATABASE_URL` | _(required)_ | PostgreSQL/Supabase connection string |
+| `DATABASE_SSL` | `auto` | SSL mode for PostgreSQL |
 | `CORS_ORIGINS` | _(all)_ | Comma-separated origins, e.g. `http://localhost:4200` |
+| `AUTH0_DOMAIN` | _(required)_ | Auth0 tenant domain |
+| `AUTH0_AUDIENCE` | _(required)_ | Auth0 API audience |
+
+See `server/README.md` for the frontend-facing API contract.
 
 ### Vercel (production frontend)
 
@@ -68,8 +75,9 @@ Set these in the Vercel project **Environment Variables** (Production):
 
 ```bash
 cd server
-cp .env.example .env   # optional
+cp .env.example .env
 npm install
+npm run migrate
 npm run dev
 ```
 
@@ -113,7 +121,7 @@ npm run client
 
 Do **not** press `Y` to terminate the batch job while the dev server is running — that stops the app and the browser will show nothing.
 
-Open **http://localhost:4200/** manually if the browser did not open. With `DEV_AUTH_BYPASS=true` in `client/.env` (default), click **Continue (dev bypass)** on the login page.
+Open **http://localhost:4200/** manually if the browser did not open. Sign in with Auth0 before using the board.
 
 ### 3. Auth0 (production)
 
@@ -121,7 +129,7 @@ Open **http://localhost:4200/** manually if the browser did not open. With `DEV_
 2. Allowed callback URLs: `http://localhost:4200/callback`, `https://YOUR_VERCEL_DOMAIN/callback`
 3. Allowed logout URLs: `http://localhost:4200`, `https://YOUR_VERCEL_DOMAIN`
 4. Create an API with identifier `https://task-dashboard-api` (audience).
-5. Set Auth0 values in `client/.env` and `DEV_AUTH_BYPASS=false` for real SSO.
+5. Set Auth0 values in `client/.env` and keep `DEV_AUTH_BYPASS=false`.
 6. Add the same variables in Vercel (see [Environment variables](#environment-variables)).
 
 ### 4. GraphQL Codegen
@@ -168,7 +176,7 @@ Generates `src/app/graphql/generated/graphql.ts` with **no `any`** — operation
 
 - **Apollo link** attaches `Authorization: Bearer` to HTTP and `connectionParams` for WebSocket.
 - **`authInterceptor`** mirrors token injection for any future REST calls.
-- **`authGuard`** protects `/dashboard`; Auth0 `provideAuth0` when `devAuthBypass` is false.
+- **`authGuard`** protects `/dashboard`; Auth0 is always configured for HTTP and WebSocket token injection.
 - Tokens refreshed through Auth0 `getAccessTokenSilently` with in-memory cache and 60s skew buffer.
 
 ### Optimistic UI & rollback
@@ -193,13 +201,12 @@ Generates `src/app/graphql/generated/graphql.ts` with **no `any`** — operation
 
 ## API hosting
 
-The in-memory GraphQL server is suitable for demos. For production:
+The GraphQL API is a Node.js service backed by PostgreSQL. For production:
 
 1. Deploy `server/` to **Render**, **Railway**, or **Fly.io** (`npm run build && npm start`).
-2. Set `PORT` and CORS as needed.
-3. Point `graphqlHttpUri` / `graphqlWsUri` in `environment.prod.ts` to the deployed host (`wss://` for WS).
-
-Optional upgrade path: **Hasura + Neon** or **Supabase GraphQL** — swap endpoints and regenerate codegen from the remote schema.
+2. Set `DATABASE_URL`, Auth0, `PORT`, and `CORS_ORIGINS` in the API host environment.
+3. Run `npm run migrate --prefix server` during setup or release.
+4. Point `GRAPHQL_HTTP_URI` / `GRAPHQL_WS_URI` to the deployed API host (`wss://` for WS).
 
 ## Deploy to Vercel
 

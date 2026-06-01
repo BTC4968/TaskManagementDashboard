@@ -1,0 +1,33 @@
+<section class="board-page" [style.background]="facade.board()?.background || 'var(--board-bg)'">
+  <app-board-header
+    [board]="facade.board()"
+    [loading]="facade.loading()"
+    (simulateFailure)="facade.simulateFailure()"
+  />
+
+  <app-board-canvas
+    [lists]="facade.lists()"
+    [loading]="facade.loading()"
+    [conflicts]="facade.conflicts()"
+    (createList)="facade.createList($event)"
+    (createCard)="facade.createCard($event.list, $event.title)"
+    (moveCard)="facade.moveCard($event)"
+    (moveList)="facade.reorderList($event)"
+    (openCard)="facade.selectCard($event.id)"
+    (archiveCard)="facade.archiveCard($event)"
+  />
+
+  <app-card-detail-modal
+    [card]="facade.selectedCard()"
+    [labels]="facade.view()?.labels ?? []"
+    [activity]="facade.view()?.activity ?? []"
+    [conflicts]="facade.conflicts()"
+    (close)="facade.selectCard(null)"
+    (saveCard)="facade.updateCard($event.card, $event.input)"
+    (archiveCard)="facade.archiveCard($event)"
+    (addChecklistItem)="facade.addChecklistItem($event.card, $event.text)"
+    (toggleChecklistItem)="facade.updateChecklistItem($event.id, $event.checked)"
+    (addComment)="facade.addComment($event.card, $event.body)"
+    (dismissConflict)="facade.dismissConflict($event)"
+  />
+</section>

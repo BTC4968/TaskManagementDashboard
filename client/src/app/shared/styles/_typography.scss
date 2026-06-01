@@ -1,0 +1,230 @@
+// Typography Scales
+// ============================================================================
+
+@import './variables';
+
+// Heading styles
+// ============================================================================
+
+@mixin h1 {
+  font-size: $text-3xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  letter-spacing: $letter-spacing-tight;
+  margin: 0 0 $margin-lg 0;
+}
+
+@mixin h2 {
+  font-size: $text-2xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  letter-spacing: $letter-spacing-tight;
+  margin: 0 0 $margin-lg 0;
+}
+
+@mixin h3 {
+  font-size: $text-xl;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-tight;
+  letter-spacing: $letter-spacing-tight;
+  margin: 0 0 $margin-md 0;
+}
+
+@mixin h4 {
+  font-size: $text-lg;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-normal;
+  letter-spacing: $letter-spacing-normal;
+  margin: 0 0 $margin-md 0;
+}
+
+@mixin h5 {
+  font-size: $text-base;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-normal;
+  letter-spacing: $letter-spacing-normal;
+  margin: 0 0 $margin-sm 0;
+}
+
+@mixin h6 {
+  font-size: $text-sm;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-normal;
+  letter-spacing: $letter-spacing-wide;
+  text-transform: uppercase;
+  margin: 0 0 $margin-sm 0;
+}
+
+// Paragraph styles
+// ============================================================================
+
+@mixin body-lg {
+  font-size: $text-lg;
+  line-height: $line-height-relaxed;
+  font-weight: $font-weight-normal;
+  margin: 0 0 $margin-md 0;
+}
+
+@mixin body-base {
+  font-size: $text-base;
+  line-height: $line-height-normal;
+  font-weight: $font-weight-normal;
+  margin: 0 0 $margin-md 0;
+}
+
+@mixin body-sm {
+  font-size: $text-sm;
+  line-height: $line-height-normal;
+  font-weight: $font-weight-normal;
+  margin: 0 0 $margin-md 0;
+}
+
+@mixin body-xs {
+  font-size: $text-xs;
+  line-height: $line-height-normal;
+  font-weight: $font-weight-normal;
+  margin: 0 0 $margin-sm 0;
+}
+
+// Text utilities
+// ============================================================================
+
+@mixin text-caption {
+  font-size: $text-xs;
+  font-weight: $font-weight-medium;
+  letter-spacing: $letter-spacing-wide;
+  text-transform: uppercase;
+  color: $color-text-tertiary;
+}
+
+@mixin text-hint {
+  font-size: $text-xs;
+  color: $color-text-muted;
+  line-height: $line-height-normal;
+}
+
+@mixin text-link {
+  color: $color-primary;
+  text-decoration: none;
+  font-weight: $font-weight-semibold;
+  transition: $transition-color;
+  cursor: pointer;
+
+  &:hover {
+    color: $color-primary-dark;
+    text-decoration: underline;
+  }
+
+  &:active {
+    color: $color-primary-dark;
+  }
+}
+
+@mixin text-mono {
+  font-family: $font-family-mono;
+  font-size: $text-sm;
+  background-color: $slate-100;
+  padding: $padding-xs $padding-sm;
+  border-radius: $radius-sm;
+}
+
+// Font weights
+// ============================================================================
+
+@mixin font-normal {
+  font-weight: $font-weight-normal;
+}
+
+@mixin font-medium {
+  font-weight: $font-weight-medium;
+}
+
+@mixin font-semibold {
+  font-weight: $font-weight-semibold;
+}
+
+@mixin font-bold {
+  font-weight: $font-weight-bold;
+}
+
+// Text alignment
+// ============================================================================
+
+@mixin text-center {
+  text-align: center;
+}
+
+@mixin text-left {
+  text-align: left;
+}
+
+@mixin text-right {
+  text-align: right;
+}
+
+// Text transformation
+// ============================================================================
+
+@mixin text-uppercase {
+  text-transform: uppercase;
+  letter-spacing: $letter-spacing-wide;
+}
+
+@mixin text-lowercase {
+  text-transform: lowercase;
+}
+
+@mixin text-capitalize {
+  text-transform: capitalize;
+}
+
+// Text colors
+// ============================================================================
+
+@mixin text-primary {
+  color: $color-text-primary;
+}
+
+@mixin text-secondary {
+  color: $color-text-secondary;
+}
+
+@mixin text-tertiary {
+  color: $color-text-tertiary;
+}
+
+@mixin text-muted {
+  color: $color-text-muted;
+}
+
+@mixin text-success {
+  color: $color-success;
+}
+
+@mixin text-danger {
+  color: $color-danger;
+}
+
+@mixin text-warning {
+  color: $color-warning;
+}
+
+@mixin text-white {
+  color: #fff;
+}
+
+// Overflow utilities
+// ============================================================================
+
+@mixin text-overflow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-clamp($lines) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
