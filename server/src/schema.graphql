@@ -1,0 +1,94 @@
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum TaskEventType {
+  CREATED
+  UPDATED
+  DELETED
+}
+
+input TaskFilterInput {
+  status: TaskStatus
+  search: String
+}
+
+input TaskSortInput {
+  field: String!
+  direction: SortDirection!
+}
+
+input CreateTaskInput {
+  title: String!
+  description: String
+  status: TaskStatus
+  priority: Int
+  assignee: String
+}
+
+input UpdateTaskInput {
+  title: String
+  description: String
+  status: TaskStatus
+  priority: Int
+  assignee: String
+}
+
+type Task {
+  id: ID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: Int!
+  assignee: String
+  version: Int!
+  updatedAt: String!
+}
+
+type PageInfo {
+  page: Int!
+  pageSize: Int!
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+type TaskConnection {
+  nodes: [Task!]!
+  totalCount: Int!
+  pageInfo: PageInfo!
+}
+
+type TaskEvent {
+  type: TaskEventType!
+  task: Task!
+}
+
+type Query {
+  tasks(page: Int! = 1, pageSize: Int! = 10, filter: TaskFilterInput, sort: [TaskSortInput!]): TaskConnection!
+  task(id: ID!): Task
+  health: String!
+}
+
+type Mutation {
+  createTask(input: CreateTaskInput!): Task!
+  updateTask(id: ID!, input: UpdateTaskInput!, expectedVersion: Int): TaskUpdateResult!
+  deleteTask(id: ID!): Boolean!
+  simulateNetworkFailure: Boolean!
+}
+
+type TaskUpdateResult {
+  success: Boolean!
+  conflict: Boolean!
+  task: Task
+}
+
+type Subscription {
+  taskChanged: TaskEvent!
+}

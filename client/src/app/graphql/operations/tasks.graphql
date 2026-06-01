@@ -1,0 +1,93 @@
+query Tasks(
+  $page: Int!
+  $pageSize: Int!
+  $filter: TaskFilterInput
+  $sort: [TaskSortInput!]
+) {
+  tasks(page: $page, pageSize: $pageSize, filter: $filter, sort: $sort) {
+    nodes {
+      id
+      title
+      description
+      status
+      priority
+      assignee
+      version
+      updatedAt
+    }
+    totalCount
+    pageInfo {
+      page
+      pageSize
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+
+query Task($id: ID!) {
+  task(id: $id) {
+    id
+    title
+    description
+    status
+    priority
+    assignee
+    version
+    updatedAt
+  }
+}
+
+mutation CreateTask($input: CreateTaskInput!) {
+  createTask(input: $input) {
+    id
+    title
+    description
+    status
+    priority
+    assignee
+    version
+    updatedAt
+  }
+}
+
+mutation UpdateTask($id: ID!, $input: UpdateTaskInput!, $expectedVersion: Int) {
+  updateTask(id: $id, input: $input, expectedVersion: $expectedVersion) {
+    success
+    conflict
+    task {
+      id
+      title
+      description
+      status
+      priority
+      assignee
+      version
+      updatedAt
+    }
+  }
+}
+
+mutation DeleteTask($id: ID!) {
+  deleteTask(id: $id)
+}
+
+mutation SimulateNetworkFailure {
+  simulateNetworkFailure
+}
+
+subscription TaskChanged {
+  taskChanged {
+    type
+    task {
+      id
+      title
+      description
+      status
+      priority
+      assignee
+      version
+      updatedAt
+    }
+  }
+}
