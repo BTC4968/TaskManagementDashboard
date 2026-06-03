@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Apollo } from 'apollo-angular';
+import { firstValueFrom } from 'rxjs';
+import { BoardsDocument, type BoardsQuery } from '../../../../graphql/generated/graphql';
 import { ProfileService } from '../../data-access/profile.service';
 
 @Component({
@@ -12,6 +15,7 @@ import { ProfileService } from '../../data-access/profile.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnboardingProfilePageComponent {
+  private readonly apollo = inject(Apollo);
   private readonly profile = inject(ProfileService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -39,9 +43,17 @@ export class OnboardingProfilePageComponent {
     this.saving.set(true);
     this.error.set(null);
     this.profile.updateProfile(this.displayName.value, this.avatarDataUrl()).subscribe({
-      next: () => {
+      next: async () => {
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/home';
-        void this.router.navigateByUrl(returnUrl);
+        try {
+          const { data } = await firstValueFrom(
+            this.apollo.query<BoardsQuery>({ query: BoardsDocument, fetchPolicy: 'network-only' }),
+          );
+          const hasBoards = (data.boards?.length ?? 0) > 0;
+          void this.router.navigateByUrl(hasBoards ? returnUrl : '/home');
+        } catch {
+          void this.router.navigateByUrl('/home');
+        }
       },
       error: (error: unknown) => {
         this.error.set(profileErrorMessage(error));
