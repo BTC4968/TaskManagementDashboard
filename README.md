@@ -103,9 +103,8 @@ NgRx would be justified for cross-feature shared state or time-travel debugging 
 | Local development | [docs/development.md](docs/development.md) |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | GraphQL API contract | [docs/api.md](docs/api.md) |
-| Deploy (Vercel + Render) | [docs/deployment.md](docs/deployment.md) |
-| CI / CD | [docs/ci-cd.md](docs/ci-cd.md) |
-| Assignment brief | [docs/reference/assignment.md](docs/reference/assignment.md) |
+| Deploy (Vercel + Render) | _see `vercel.json` and `render.yaml`_ |
+| CI / CD | _see `.github/workflows/`_ |
 
 ## Repository layout
 
@@ -124,7 +123,7 @@ NgRx would be justified for cross-feature shared state or time-travel debugging 
 npm run ci
 ```
 
-GitHub Actions runs server tests, client build, and GraphQL codegen drift checks on every PR and push to `main`. See [docs/ci-cd.md](docs/ci-cd.md).
+GitHub Actions runs server tests, client build, and GraphQL codegen drift checks on every PR and push to `main`. See `.github/workflows/` for workflow definitions.
 
 ## License
 
