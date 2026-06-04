@@ -37,12 +37,14 @@ export class CreateBoardPageComponent {
       this.error.set('Image must be 2.5 MB or smaller.');
       return;
     }
-    const data = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
-    this.logoData = `data:${file.type};base64,${base64}`;
-    this.imagePreview.set(this.logoData);
-    this.fileName = file.name;
-    this.error.set(null);
+    try {
+      this.logoData = await readFileAsDataURL(file);
+      this.imagePreview.set(this.logoData);
+      this.fileName = file.name;
+      this.error.set(null);
+    } catch {
+      this.error.set('Could not read image file.');
+    }
   }
 
   removeImage(): void {
@@ -67,4 +69,13 @@ export class CreateBoardPageComponent {
       this.creating.set(false);
     }
   }
+}
+
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.readAsDataURL(file);
+  });
 }
