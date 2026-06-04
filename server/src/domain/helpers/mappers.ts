@@ -1,6 +1,6 @@
 import type { AuthUser } from '../../auth/auth.js';
-import { Board, BoardCard, BoardList, BoardView, ChecklistItem, Label, Task, TaskComment, ActivityItem, UserProfile, BoardMember, BoardInvitation, TaskList } from '../../types.js';
-import type { BoardRow, ListRow, TaskRow, LabelRow, ChecklistRow, CommentRow, ActivityRow, UserProfileRow, BoardMemberRow, BoardInvitationRow } from './db-types.js';
+import { Board, BoardCard, BoardList, BoardView, ChecklistItem, Label, Task, TaskComment, ActivityItem, UserProfile, UserIdentity, BoardMember, BoardInvitation, TaskList } from '../../types.js';
+import type { BoardRow, ListRow, TaskRow, LabelRow, ChecklistRow, CommentRow, ActivityRow, UserProfileRow, BoardMemberRow, BoardInvitationRow, UserIdentityRow } from './db-types.js';
 
 export const SORT_FIELDS: Record<string, string> = {
   title: 'title',
@@ -168,6 +168,20 @@ export function toBoardInvitation(row: BoardInvitationRow): BoardInvitation {
     expiresAt: iso(row.expires_at),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
+  };
+}
+
+export function providerFromSub(auth0Sub: string): string {
+  const pipe = auth0Sub.indexOf('|');
+  return pipe > 0 ? auth0Sub.slice(0, pipe) : auth0Sub;
+}
+
+export function toUserIdentity(row: UserIdentityRow): UserIdentity {
+  return {
+    auth0Sub: row.auth0_sub,
+    profileAuth0Sub: row.profile_auth0_sub,
+    provider: row.provider || providerFromSub(row.auth0_sub),
+    createdAt: iso(row.created_at),
   };
 }
 

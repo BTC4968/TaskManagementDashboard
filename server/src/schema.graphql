@@ -192,6 +192,13 @@ type ActivityItem {
   createdAt: String!
 }
 
+type UserIdentity {
+  auth0Sub: ID!
+  profileAuth0Sub: ID!
+  provider: String!
+  createdAt: String!
+}
+
 type UserProfile {
   auth0Sub: ID!
   displayName: String!
@@ -201,6 +208,8 @@ type UserProfile {
   lastSeenAt: String
   createdAt: String!
   updatedAt: String!
+  identities: [UserIdentity!]!
+  providers: [String!]!
 }
 
 type BoardMember {

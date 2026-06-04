@@ -82,6 +82,13 @@ export interface UserProfileRow {
   updated_at: Date | string;
 }
 
+export interface UserIdentityRow {
+  auth0_sub: string;
+  profile_auth0_sub: string;
+  provider: string;
+  created_at: Date | string;
+}
+
 export interface BoardMemberRow {
   board_id: string;
   auth0_sub: string;

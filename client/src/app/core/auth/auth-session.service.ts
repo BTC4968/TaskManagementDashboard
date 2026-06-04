@@ -17,13 +17,19 @@ export class AuthSessionService {
     disposeApolloWs();
     void this.apollo.client.clearStore();
 
-    // Local logout avoids Auth0 "Allowed Logout URLs" requirement. The SDK clears
-    // app tokens/cache; we then route to /login. For full Auth0 SSO logout (clears
-    // Auth0 session cookie), add http://localhost:4200/login to Allowed Logout URLs
-    // and switch to federated logout with returnTo.
-    this.auth.logout({ openUrl: false }).subscribe({
-      next: () => void this.router.navigateByUrl('/login'),
-      error: () => void this.router.navigateByUrl('/login'),
-    });
+    // Federated logout redirects to Auth0 /v2/logout to clear the SSO session
+    // cookie, then Auth0 redirects back to /login (must be in Auth0 "Allowed
+    // Logout URLs" — currently http://localhost:4200/login).
+    // Fallback navigation in case the redirect doesn't happen.
+    this.auth
+      .logout({
+        logoutParams: {
+          returnTo: window.location.origin + '/login',
+        },
+      })
+      .subscribe({
+        next: () => void this.router.navigateByUrl('/login'),
+        error: () => void this.router.navigateByUrl('/login'),
+      });
   }
 }

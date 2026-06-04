@@ -3,25 +3,146 @@ import { put } from '@vercel/blob';
 import type { AuthUser } from '../auth/auth.js';
 import { env } from '../config/env.js';
 import type { DbClient } from '../db/pool.js';
-import { UserProfile, BoardMember, BoardInvitation, InvitationStatus, BoardRole, UpdateMyProfileInput, InviteMemberInput } from '../types.js';
+import { UserProfile, UserIdentity, BoardMember, BoardInvitation, InvitationStatus, BoardRole, UpdateMyProfileInput, InviteMemberInput } from '../types.js';
 import { cleanDisplayName, cleanOptional, cleanEmail, cleanInviteRole, parseDataImage, extensionForMimeType, cleanColor } from './helpers/validators.js';
-import { toUserProfile, toBoardMember, toBoardInvitation, toLabel, defaultDisplayName } from './helpers/mappers.js';
+import { toUserProfile, toUserIdentity, toBoardMember, toBoardInvitation, toLabel, defaultDisplayName, providerFromSub } from './helpers/mappers.js';
 import { recordActivity } from './activity.repository.js';
-import type { UserProfileRow, BoardMemberRow, BoardInvitationRow } from './helpers/db-types.js';
+import type { UserProfileRow, UserIdentityRow, BoardMemberRow, BoardInvitationRow } from './helpers/db-types.js';
+
+export async function getUserIdentities(db: DbClient, profileSub: string): Promise<UserIdentity[]> {
+  const result = await db.query<UserIdentityRow>(
+    `SELECT auth0_sub, profile_auth0_sub, provider, created_at
+     FROM user_identities
+     WHERE profile_auth0_sub = $1
+     ORDER BY created_at ASC`,
+    [profileSub],
+  );
+  return result.rows.map(toUserIdentity);
+}
+
+async function ensureIdentity(db: DbClient, auth0Sub: string, profileSub: string): Promise<void> {
+  await db.query(
+    `INSERT INTO user_identities (auth0_sub, profile_auth0_sub, provider)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (auth0_sub) DO UPDATE
+     SET profile_auth0_sub = excluded.profile_auth0_sub`,
+    [auth0Sub, profileSub, providerFromSub(auth0Sub)],
+  );
+}
 
 export async function getUserProfile(db: DbClient, user: AuthUser): Promise<UserProfile | null> {
-  const result = await db.query<UserProfileRow>(
+  const sub = user.id;
+  const email = user.email?.trim().toLowerCase() ?? null;
+
+  // 1. Look up by auth0_sub in user_identities (linked identity)
+  const identityResult = await db.query<UserIdentityRow>(
+    'SELECT auth0_sub, profile_auth0_sub, provider, created_at FROM user_identities WHERE auth0_sub = $1',
+    [sub],
+  );
+
+  if (identityResult.rows.length > 0) {
+    const profileSub = identityResult.rows[0].profile_auth0_sub;
+    const updateResult = await db.query<UserProfileRow>(
+      `UPDATE user_profiles
+       SET email = COALESCE($2, email),
+           picture_url = COALESCE(user_profiles.picture_url, $3),
+           last_seen_at = now(),
+           updated_at = now()
+       WHERE auth0_sub = $1
+       RETURNING auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at`,
+      [profileSub, user.email, user.pictureUrl],
+    );
+    if (updateResult.rows.length > 0) {
+      return toUserProfile(updateResult.rows[0]);
+    }
+  }
+
+  // 2. Look up by auth0_sub in user_profiles (canonical profile)
+  const directResult = await db.query<UserProfileRow>(
+    `SELECT auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at
+     FROM user_profiles WHERE auth0_sub = $1`,
+    [sub],
+  );
+
+  if (directResult.rows.length > 0) {
+    await ensureIdentity(db, sub, sub);
+    const updateResult = await db.query<UserProfileRow>(
+      `UPDATE user_profiles
+       SET email = COALESCE($2, email),
+           picture_url = COALESCE(user_profiles.picture_url, $3),
+           last_seen_at = now(),
+           updated_at = now()
+       WHERE auth0_sub = $1
+       RETURNING auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at`,
+      [sub, user.email, user.pictureUrl],
+    );
+    return toUserProfile(updateResult.rows[0]);
+  }
+
+  // 3. Not found by sub — try by email (same user, different Auth0 provider)
+  if (email) {
+    const emailResult = await db.query<UserProfileRow>(
+      `SELECT auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at
+       FROM user_profiles WHERE lower(email) = $1
+       LIMIT 1`,
+      [email],
+    );
+
+    if (emailResult.rows.length > 0) {
+      const existingProfile = emailResult.rows[0];
+      const existingSub = existingProfile.auth0_sub;
+
+      // Link the new identity to the existing profile
+      await ensureIdentity(db, sub, existingSub);
+
+      // Migrate any board memberships from earlier orphaned profiles
+      await migrateBoardMemberships(db, sub, existingSub);
+
+      // Update the existing profile
+      const updateResult = await db.query<UserProfileRow>(
+        `UPDATE user_profiles
+         SET email = $2,
+             picture_url = COALESCE(user_profiles.picture_url, $3),
+             last_seen_at = now(),
+             updated_at = now()
+         WHERE auth0_sub = $1
+         RETURNING auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at`,
+        [existingSub, user.email, user.pictureUrl],
+      );
+      return toUserProfile(updateResult.rows[0]);
+    }
+  }
+
+  // 4. Completely new user — create profile + identity
+  const newResult = await db.query<UserProfileRow>(
     `INSERT INTO user_profiles (auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at)
      VALUES ($1, $2, $3, $4, false, now())
-     ON CONFLICT (auth0_sub) DO UPDATE
-     SET email = excluded.email,
-         picture_url = COALESCE(user_profiles.picture_url, excluded.picture_url),
-         last_seen_at = now(),
-         updated_at = now()
      RETURNING auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at`,
-    [user.id, defaultDisplayName(user), user.email, user.pictureUrl],
+    [sub, defaultDisplayName(user), user.email, user.pictureUrl],
   );
-  return result.rows[0] ? toUserProfile(result.rows[0]) : null;
+
+  if (newResult.rows.length > 0) {
+    await ensureIdentity(db, sub, sub);
+    return toUserProfile(newResult.rows[0]);
+  }
+
+  return null;
+}
+
+async function migrateBoardMemberships(db: DbClient, fromSub: string, toSub: string): Promise<void> {
+  if (fromSub === toSub) return;
+  await db.query(
+    `INSERT INTO board_members (board_id, auth0_sub, role, invited_by, created_at)
+     SELECT board_id, $2, role, COALESCE(invited_by, $2), created_at
+     FROM board_members WHERE auth0_sub = $1
+     ON CONFLICT (board_id, auth0_sub) DO UPDATE
+     SET role = CASE
+           WHEN board_members.role = 'OWNER' THEN board_members.role
+           ELSE EXCLUDED.role
+         END`,
+    [fromSub, toSub],
+  );
+  await db.query('DELETE FROM board_members WHERE auth0_sub = $1', [fromSub]);
 }
 
 export async function updateUserProfile(db: DbClient, user: AuthUser, input: UpdateMyProfileInput): Promise<UserProfile> {
@@ -95,8 +216,12 @@ export async function listBoardMembers(db: DbClient, boardId: string): Promise<B
 export async function listProjectUsers(db: DbClient): Promise<UserProfile[]> {
   const result = await db.query<UserProfileRow>(
     `SELECT auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at
-     FROM user_profiles
-     WHERE email IS NOT NULL
+     FROM (
+       SELECT DISTINCT ON (lower(email)) auth0_sub, display_name, email, picture_url, is_onboarded, last_seen_at, created_at, updated_at
+       FROM user_profiles
+       WHERE email IS NOT NULL
+       ORDER BY lower(email), created_at ASC
+     ) deduped
      ORDER BY lower(display_name) ASC, created_at ASC`,
   );
   return result.rows.map(toUserProfile);

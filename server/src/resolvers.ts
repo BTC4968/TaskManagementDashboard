@@ -30,7 +30,7 @@ import {
   getDefaultBoardForUser,
   getTask,
   getTaskForUser,
-  getUserProfile,
+  getUserProfile, getUserIdentities,
   listBoardInvitations,
   listProjectUsers,
   listMyPendingInvitations,
@@ -238,6 +238,17 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
             hasPreviousPage: page > 1,
           },
         };
+      },
+    },
+    UserProfile: {
+      identities: async (parent: UserProfile, _: unknown, context: GraphQLContext) => {
+        requireUser(context);
+        return getUserIdentities(deps.db, parent.auth0Sub);
+      },
+      providers: async (parent: UserProfile, _: unknown, context: GraphQLContext) => {
+        requireUser(context);
+        const identities = await getUserIdentities(deps.db, parent.auth0Sub);
+        return [...new Set(identities.map((i) => i.provider))];
       },
     },
     Mutation: {

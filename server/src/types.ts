@@ -110,6 +110,13 @@ export interface ActivityItem {
   createdAt: string;
 }
 
+export interface UserIdentity {
+  auth0Sub: string;
+  profileAuth0Sub: string;
+  provider: string;
+  createdAt: string;
+}
+
 export interface UserProfile {
   auth0Sub: string;
   displayName: string;
@@ -119,6 +126,7 @@ export interface UserProfile {
   lastSeenAt: string | null;
   createdAt: string;
   updatedAt: string;
+  identities?: UserIdentity[];
 }
 
 export interface BoardMember {

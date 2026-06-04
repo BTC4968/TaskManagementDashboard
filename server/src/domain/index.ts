@@ -21,7 +21,7 @@ export {
 export { loadAssigneesForTasks, replaceTaskAssignees, assertAssigneesAreBoardMembers, normalizeAssigneeList } from './task-assignee.repository.js';
 
 export {
-  getUserProfile, updateUserProfile, listBoardMembers, listProjectUsers,
+  getUserProfile, getUserIdentities, updateUserProfile, listBoardMembers, listProjectUsers,
   listBoardInvitations, listMyPendingInvitations, inviteMember,
   acceptInvitation, declineInvitation, createLabel,
 } from './user.repository.js';
