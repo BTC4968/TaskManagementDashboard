@@ -1,5 +1,41 @@
 # Development guide
 
+## First-time setup
+
+```bash
+# 1. Install Node.js 20+ (see .nvmrc)
+nvm use    # or manually install Node 20+
+
+# 2. Clone and install dependencies
+git clone <repo-url>
+cd task-dashboard
+npm install && npm run install:all
+
+# 3. Configure environment variables
+cp server/.env.example server/.env
+cp client/.env.example client/.env
+# Fill in values — see docs/env-guide.md for step-by-step help
+
+# 4. Run database migrations
+cd server && npm run migrate && cd ..
+
+# 5. Start development servers
+npm run dev
+```
+
+After starting, verify:
+
+| Service | URL | Check |
+|---------|-----|-------|
+| Angular UI | `http://localhost:4200` | Should show login prompt |
+| GraphQL HTTP | `http://localhost:4000/graphql` | Should return 400 (not 404) |
+| WebSocket | `ws://localhost:4000/graphql` | Should accept connection |
+| Health | `http://localhost:4000/health` | Should return `{ "status": "ok" }` |
+
+Complete env var reference: [env-guide.md](env-guide.md).
+
+---
+
 ## Prerequisites
 
 - **Node.js** 20+ (see `.nvmrc`) and npm 10+
@@ -14,12 +50,9 @@ npm install              # root: concurrently
 npm run install:all      # client + server
 ```
 
-## Environment
+## Environment variables
 
-```bash
-cp server/.env.example server/.env
-cp client/.env.example client/.env
-```
+Env files are copied during first-time setup (see above). Reference tables for each variable:
 
 ### Client (`client/.env`)
 
@@ -52,18 +85,6 @@ Do not edit `client/src/environments/environment.config.ts` by hand — run `npm
 | `BLOB_READ_WRITE_TOKEN` | _(optional)_ | Vercel Blob for avatars |
 
 Never commit `.env` files. See [api.md](api.md) for the GraphQL contract.
-
-## Run locally
-
-```bash
-cd server && npm run migrate
-cd .. && npm run dev
-```
-
-- API: `http://localhost:4000/graphql` (WS: `ws://localhost:4000/graphql`)
-- UI: `http://localhost:4200/`
-
-Or separately: `npm run server` and `npm run client`.
 
 ## GraphQL codegen
 
@@ -102,3 +123,16 @@ Output: `client/src/app/graphql/generated/graphql.ts`.
 | `server/` | `npm test` | Build + run tests |
 | `client/` | `npm start` | Dev server |
 | `client/` | `npm run build` | Production bundle |
+
+## Troubleshooting
+
+See [troubleshooting.md](troubleshooting.md) for:
+
+- "Maximum call stack size exceeded" on image upload
+- ~2 second delay in cross-tab real-time sync
+- WebSocket subscription silently disconnects
+- Stale board data when navigating back
+- GraphQL schema changes not reflected in client
+- Auth0 token errors (401)
+- Migration fails
+- CORS errors in browser console

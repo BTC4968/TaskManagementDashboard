@@ -1,34 +1,10 @@
 # GraphQL API contract
 
-GraphQL Yoga backend for the Real-Time Collaborative Task Management Dashboard. PostgreSQL is the source of truth, Auth0 JWTs are required for task operations, and WebSocket subscriptions are backed by PostgreSQL `LISTEN/NOTIFY`.
+GraphQL Yoga backend for the Real-Time Collaborative Task Management Dashboard.  
+PostgreSQL source of truth, Auth0 JWTs required, WebSocket subscriptions backed by `LISTEN/NOTIFY`.
 
-## Local Endpoints
-
-```text
-HTTP health:      GET  http://localhost:4000/health
-GraphQL HTTP:     POST http://localhost:4000/graphql
-GraphQL WS:       ws://localhost:4000/graphql
-```
-
-Production uses the same paths on the deployed API host. Use `https://` for HTTP and `wss://` for subscriptions.
-
-## Environment
-
-Copy `server/.env.example` to `server/.env` and fill every value.
-
-| Variable | Example | Notes |
-| --- | --- | --- |
-| `NODE_ENV` | `development` | Use `production` in deployed API environments. |
-| `PORT` | `4000` | HTTP and WebSocket port. |
-| `HOST` | `0.0.0.0` | Bind address. |
-| `DATABASE_URL` | `postgresql://USER:PASSWORD@HOST:5432/DATABASE` | Supabase, Neon, or any PostgreSQL-compatible URL. |
-| `DATABASE_SSL` | `auto` | `auto` enables SSL for non-local DB hosts. |
-| `DATABASE_POOL_MAX` | `5` | Keep this below hosted session-pool limits; the API avoids per-request query fan-out. |
-| `CORS_ORIGINS` | `http://localhost:4200,https://app.example.com` | Comma-separated frontend origins. |
-| `AUTH0_DOMAIN` | `tenant.us.auth0.com` | Auth0 tenant domain. |
-| `AUTH0_AUDIENCE` | `https://task-dashboard-api` | Must match the Auth0 API audience used by the frontend. |
-
-Do not commit real `.env` secrets. If a database URL has been exposed, rotate that password.
+For setup instructions (endpoints, env vars, migrations), see [development.md](development.md).  
+For env var values step-by-step, see [env-guide.md](env-guide.md).
 
 ## Auth Contract
 
@@ -69,31 +45,35 @@ query DefaultBoard {
 
 query BoardView($boardId: ID!) {
   boardView(boardId: $boardId) {
-    board { id title description background version }
+    board { id title description background logoUrl version createdAt updatedAt }
     lists {
       id
+      boardId
       title
-      status
       position
       version
+      createdAt
+      updatedAt
       cards {
         id
+        boardId
         listId
         title
         description
-        status
         priority
-        assignee
+        assignees
         position
         dueDate
         coverColor
+        archived
         version
+        updatedAt
         labels { id name color }
-        checklist { id text checked position }
-        comments { id body author createdAt }
+        checklist { id taskId text checked position }
+        comments { id taskId body author createdAt }
       }
     }
-    labels { id name color }
+    labels { id boardId name color }
     activity { id taskId type message actor createdAt }
   }
 }
@@ -110,7 +90,7 @@ mutation MoveTask($input: MoveTaskInput!) {
   moveTask(input: $input) {
     success
     conflict
-    task { id listId position status version }
+    task { id listId position version }
   }
 }
 
@@ -121,16 +101,24 @@ subscription BoardChanged($boardId: ID!) {
     clientMutationId
     actorId
     actorName
-    task { id title version }
-    list { id title version }
+    task {
+      id boardId listId title description priority assignees
+      position dueDate coverColor archived version updatedAt
+    }
+    list {
+      id boardId title position archived version createdAt updatedAt
+    }
+    label { id boardId name color }
     comment { id taskId body author createdAt }
+    checklistItem { id taskId text checked position }
+    activity { id taskId type message actor createdAt }
   }
 }
 ```
 
 Legacy `tasks`, `task`, and `taskChanged` remain available for compatibility. New frontend code should use board operations.
 
-Task statuses are `TODO`, `IN_PROGRESS`, and `DONE`. Positions are floating-point ordering keys; clients can place a card between neighbors by sending the midpoint.
+Tasks have an `archived` boolean and an integer `priority` (1–5). Positions are floating-point ordering keys; clients can place a card between neighbors by sending the midpoint.
 
 ## Query Variables
 
@@ -141,7 +129,6 @@ Pagination, filtering, and sorting example:
   "page": 1,
   "pageSize": 20,
   "filter": {
-    "status": "IN_PROGRESS",
     "search": "release"
   },
   "sort": [
@@ -151,7 +138,7 @@ Pagination, filtering, and sorting example:
 }
 ```
 
-Supported sort fields: `title`, `status`, `priority`, `assignee`, `updatedAt`. Unknown fields fall back to `updatedAt`.
+Supported sort fields: `title`, `priority`, `updatedAt`. Unknown fields fall back to `updatedAt`.
 
 ## Conflict Handling
 
@@ -218,7 +205,3 @@ Frontend cache guidance:
 - `LABEL_UPDATED`: merge `label` into board labels; bump card version when `task` is present.
 
 For optimistic writes, send a unique `clientMutationId` on `UpdateTaskInput`, `MoveTaskInput`, and `UpdateListInput`. The backend echoes it on `boardChanged`; clients should ignore conflict UI for events with their own pending mutation id and use foreign newer versions for conflict banners.
-
-## Commands
-
-See [development.md](development.md) for install, migrate, dev, and test commands. Migrations apply SQL from `server/src/db/migrations` and record versions in `schema_migrations`.
