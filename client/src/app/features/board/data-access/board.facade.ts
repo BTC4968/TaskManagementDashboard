@@ -51,6 +51,9 @@ import {
   DeleteTaskDocument,
   DeleteTaskMutation,
   DeleteTaskMutationVariables,
+  LogTaskTimeDocument,
+  LogTaskTimeMutation,
+  LogTaskTimeMutationVariables,
   MoveTaskDocument,
   MoveTaskMutation,
   MoveTaskMutationVariables,
@@ -70,10 +73,12 @@ import {
   ProjectUsersQueryVariables,
 } from '../../../graphql/generated/graphql';
 import { BoardCardModel, BoardListModel, BoardMemberModel, BoardViewModel, CardConflict, CardMoveRequest, ListMoveRequest } from '../models/board.types';
+import { parseDurationToMinutes } from '../utils/time.utils';
 import {
   applyBoardEvent,
   applyChecklistItem,
   applyComment,
+  applyTimeLog,
   removeChecklistItem,
   replaceChecklistTempId,
   replaceCommentTempId,
@@ -114,7 +119,7 @@ function matchDueDateOptions(
   return false;
 }
 
-type CardUpdateInput = Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignees' | 'dueDate' | 'coverColor'>>;
+type CardUpdateInput = Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignees' | 'dueDate' | 'coverColor' | 'estimateMinutes'>>;
 
 function assigneesEqual(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
@@ -696,6 +701,84 @@ export class BoardFacade {
       });
   }
 
+  logTaskTime(card: BoardCardModel, duration: string, comment?: string): void {
+    const minutes = parseDurationToMinutes(duration);
+    if (!minutes) {
+      this.toast.error('Use durations like 2h, 30m, or 1h 30m.');
+      return;
+    }
+
+    const view = this.view();
+    if (!view) return;
+
+    const tempId = `temp-timelog-${crypto.randomUUID()}`;
+    const optimistic = {
+      __typename: 'TaskTimeLog' as const,
+      id: tempId,
+      taskId: card.id,
+      minutes,
+      comment: comment?.trim() || null,
+      author: 'You',
+      createdAt: new Date().toISOString(),
+    };
+    this.view.set(applyTimeLog(view, optimistic));
+
+    this.apollo
+      .mutate<LogTaskTimeMutation, LogTaskTimeMutationVariables>({
+        mutation: LogTaskTimeDocument,
+        variables: { input: { taskId: card.id, duration, comment: comment?.trim() || null } },
+      })
+      .subscribe({
+        next: ({ data }) => {
+          const log = data?.logTaskTime;
+          const current = this.view();
+          if (!log || !current) return;
+          this.view.set(
+            applyTimeLog(
+              {
+                ...current,
+                lists: current.lists.map((list) => ({
+                  ...list,
+                  cards: list.cards.map((entry) =>
+                    entry.id === card.id
+                      ? {
+                          ...entry,
+                          timeLogs: entry.timeLogs.filter((item) => item.id !== tempId),
+                          timeSpentMinutes: entry.timeLogs
+                            .filter((item) => item.id !== tempId)
+                            .reduce((total, item) => total + item.minutes, 0),
+                        }
+                      : entry,
+                  ),
+                })),
+              },
+              log,
+            ),
+          );
+        },
+        error: () => {
+          const current = this.view();
+          if (!current) return;
+          this.view.set({
+            ...current,
+            lists: current.lists.map((list) => ({
+              ...list,
+              cards: list.cards.map((entry) => {
+                if (entry.id !== card.id) return entry;
+                const timeLogs = entry.timeLogs.filter((item) => item.id !== tempId);
+                return {
+                  ...entry,
+                  timeLogs,
+                  timeSpentMinutes: timeLogs.reduce((total, item) => total + item.minutes, 0),
+                };
+              }),
+            })),
+          });
+          this.toast.error('Time log failed.');
+        },
+      });
+  }
+
   selectCard(id: string | null): void {
     this.selectedCardId.set(id);
   }
@@ -872,8 +955,10 @@ export class BoardFacade {
           }
           const taskId = event.task?.id ?? null;
           if (
-            (event.type === BoardEventType.ChecklistUpdated || event.type === BoardEventType.ChecklistItemDeleted) &&
-            event.checklistItem &&
+            (event.type === BoardEventType.ChecklistUpdated ||
+              event.type === BoardEventType.ChecklistItemDeleted ||
+              event.type === BoardEventType.TimeLogged) &&
+            (event.checklistItem || event.timeLog) &&
             event.actorId &&
             event.actorId === this.currentUserSub()
           ) {
@@ -1009,6 +1094,9 @@ export class BoardFacade {
     }
     if (input.dueDate !== undefined && input.dueDate !== card.dueDate) changed.dueDate = input.dueDate;
     if (input.coverColor !== undefined && input.coverColor !== card.coverColor) changed.coverColor = input.coverColor;
+    if (input.estimateMinutes !== undefined && input.estimateMinutes !== card.estimateMinutes) {
+      changed.estimateMinutes = input.estimateMinutes;
+    }
     return changed;
   }
 
@@ -1051,9 +1139,12 @@ export class BoardFacade {
       archived: false,
       version: 0,
       updatedAt: now,
+      estimateMinutes: null,
+      timeSpentMinutes: 0,
       labels: [],
       checklist: [],
       comments: [],
+      timeLogs: [],
     };
     return {
       ...view,

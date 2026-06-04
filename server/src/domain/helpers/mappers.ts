@@ -1,6 +1,6 @@
 import type { AuthUser } from '../../auth/auth.js';
-import { Board, BoardCard, BoardList, BoardView, ChecklistItem, Label, Task, TaskComment, ActivityItem, UserProfile, UserIdentity, BoardMember, BoardInvitation, TaskList } from '../../types.js';
-import type { BoardRow, ListRow, TaskRow, LabelRow, ChecklistRow, CommentRow, ActivityRow, UserProfileRow, BoardMemberRow, BoardInvitationRow, UserIdentityRow } from './db-types.js';
+import { Board, BoardCard, BoardList, BoardView, ChecklistItem, Label, Task, TaskComment, TaskTimeLog, ActivityItem, UserProfile, UserIdentity, BoardMember, BoardInvitation, TaskList } from '../../types.js';
+import type { BoardRow, ListRow, TaskRow, LabelRow, ChecklistRow, CommentRow, TimeLogRow, ActivityRow, UserProfileRow, BoardMemberRow, BoardInvitationRow, UserIdentityRow } from './db-types.js';
 
 export const SORT_FIELDS: Record<string, string> = {
   title: 'title',
@@ -74,7 +74,7 @@ export function toList(row: ListRow): TaskList {
   };
 }
 
-export function toTask(row: TaskRow, assignees: string[] = []): Task {
+export function toTask(row: TaskRow, assignees: string[] = [], timeSpentMinutes = 0): Task {
   const resolved = assignees.length > 0 ? assignees : row.assignee ? [row.assignee] : [];
   return {
     id: row.id,
@@ -90,6 +90,8 @@ export function toTask(row: TaskRow, assignees: string[] = []): Task {
     archived: row.archived,
     version: row.version,
     updatedAt: iso(row.updated_at),
+    estimateMinutes: row.estimate_minutes ?? null,
+    timeSpentMinutes,
   };
 }
 
@@ -115,6 +117,21 @@ export function toComment(row: CommentRow): TaskComment {
     author: row.author,
     createdAt: iso(row.created_at),
   };
+}
+
+export function toTimeLog(row: TimeLogRow): TaskTimeLog {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    minutes: row.minutes,
+    comment: row.comment,
+    author: row.author,
+    createdAt: iso(row.created_at),
+  };
+}
+
+export function sumTimeLogMinutes(logs: Array<{ minutes: number }>): number {
+  return logs.reduce((total, log) => total + log.minutes, 0);
 }
 
 export function toActivity(row: ActivityRow): ActivityItem {

@@ -11,6 +11,7 @@ type ListPayload = NonNullable<BoardEventModel['list']>;
 type LabelPayload = NonNullable<BoardEventModel['label']>;
 type CommentPayload = NonNullable<BoardEventModel['comment']>;
 type ChecklistPayload = NonNullable<BoardEventModel['checklistItem']>;
+type TimeLogPayload = NonNullable<BoardEventModel['timeLog']>;
 
 export function shouldApplyTaskUpdate(existing: BoardCardModel | undefined, incoming: TaskPayload): boolean {
   if (!existing) return true;
@@ -77,6 +78,8 @@ export function applyBoardEvent(view: BoardViewModel | null, event: BoardEventMo
       return event.checklistItem
         ? removeChecklistItem(view, event.checklistItem.taskId, event.checklistItem.id)
         : view;
+    case BoardEventType.TimeLogged:
+      return applyTimeLogged(view, event.task, event.timeLog);
     case BoardEventType.LabelUpdated:
       return applyLabelUpdated(view, event.label, event.task);
     default:
@@ -100,9 +103,12 @@ export function taskToCard(task: TaskPayload, existing?: BoardCardModel): BoardC
     archived: task.archived,
     version: task.version,
     updatedAt: task.updatedAt,
+    estimateMinutes: task.estimateMinutes ?? existing?.estimateMinutes ?? null,
+    timeSpentMinutes: task.timeSpentMinutes ?? existing?.timeSpentMinutes ?? 0,
     labels: existing?.labels ?? [],
     checklist: existing?.checklist ?? [],
     comments: existing?.comments ?? [],
+    timeLogs: existing?.timeLogs ?? [],
   };
 }
 
@@ -300,6 +306,31 @@ export function removeChecklistItem(view: BoardViewModel, taskId: string, itemId
   }));
 }
 
+export function applyTimeLog(view: BoardViewModel, timeLog: TimeLogPayload): BoardViewModel {
+  return patchCard(view, timeLog.taskId, (card) => {
+    const nextLogs = card.timeLogs.some((entry) => entry.id === timeLog.id)
+      ? card.timeLogs.map((entry) => (entry.id === timeLog.id ? timeLog : entry))
+      : [timeLog, ...card.timeLogs];
+    const timeSpentMinutes = nextLogs.reduce((total, entry) => total + entry.minutes, 0);
+    return { ...card, timeLogs: nextLogs, timeSpentMinutes };
+  });
+}
+
+export function applyTimeLogged(
+  view: BoardViewModel,
+  task: BoardEventModel['task'],
+  timeLog: BoardEventModel['timeLog'],
+): BoardViewModel {
+  if (!timeLog) {
+    return task ? applyCardUpdated(view, task) : view;
+  }
+  let next = applyTimeLog(view, timeLog);
+  if (task) {
+    next = applyCardUpdated(next, task);
+  }
+  return next;
+}
+
 export function applyComment(view: BoardViewModel, comment: CommentPayload): BoardViewModel {
   return patchCard(view, comment.taskId, (card) => ({
     ...card,
@@ -406,6 +437,8 @@ function mergeCard(incoming: BoardCardModel, existing: BoardCardModel): BoardCar
       labels: incoming.labels.length ? incoming.labels : existing.labels,
       checklist: existing.checklist.length > incoming.checklist.length ? existing.checklist : incoming.checklist,
       comments: existing.comments.length > incoming.comments.length ? existing.comments : incoming.comments,
+      timeLogs: existing.timeLogs.length > incoming.timeLogs.length ? existing.timeLogs : incoming.timeLogs,
+      timeSpentMinutes: Math.max(existing.timeSpentMinutes, incoming.timeSpentMinutes),
     };
   }
   return {
@@ -413,6 +446,8 @@ function mergeCard(incoming: BoardCardModel, existing: BoardCardModel): BoardCar
     labels: incoming.labels.length ? incoming.labels : existing.labels,
     checklist: existing.checklist.length >= incoming.checklist.length ? existing.checklist : incoming.checklist,
     comments: existing.comments.length >= incoming.comments.length ? existing.comments : incoming.comments,
+    timeLogs: existing.timeLogs.length >= incoming.timeLogs.length ? existing.timeLogs : incoming.timeLogs,
+    timeSpentMinutes: Math.max(existing.timeSpentMinutes, incoming.timeSpentMinutes),
   };
 }
 

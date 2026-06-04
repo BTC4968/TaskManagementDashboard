@@ -22,6 +22,7 @@ export class BoardListComponent {
   readonly cardDropped = output<CdkDragDrop<BoardCardModel[]>>();
   readonly openCard = output<BoardCardModel>();
   readonly archiveCard = output<BoardCardModel>();
+  readonly estimateChange = output<{ card: BoardCardModel; estimateMinutes: number | null }>();
 
   readonly conflictIds = computed(() => new Set(this.conflicts().map((conflict) => conflict.taskId)));
   readonly dropActive = signal(false);

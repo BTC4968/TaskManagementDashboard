@@ -9,7 +9,7 @@ export {
 export {
   getTask, getTaskForUser, createTask, updateTask, moveTask, deleteTask,
   listTasks, listTasksForUser, setTaskLabels,
-  createChecklistItem, updateChecklistItem, deleteChecklistItem, addComment,
+  createChecklistItem, updateChecklistItem, deleteChecklistItem, addComment, logTaskTime,
   type TaskMutationResult, type TaskListResult, type TaskEvent,
 } from './card.repository.js';
 

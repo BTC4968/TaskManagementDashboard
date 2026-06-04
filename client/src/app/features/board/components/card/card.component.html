@@ -37,8 +37,33 @@
     </div>
   }
 
-  @if (checklistProgress() || card().dueDate) {
-    <footer>
+  <footer>
+    @if (editingEstimate()) {
+        <input
+          class="estimate-input"
+          [value]="estimateDraft()"
+          placeholder="2h, 30m"
+          autofocus
+          (click)="$event.stopPropagation()"
+          (mousedown)="$event.stopPropagation()"
+          (input)="estimateDraft.set($any($event.target).value)"
+          (blur)="commitEstimate($event)"
+          (keydown)="onEstimateKeydown($event)"
+        />
+      } @else if (estimateLabel() || card().timeSpentMinutes) {
+        <button type="button" class="estimate-badge" (click)="startEstimateEdit($event)">
+          @if (estimateLabel()) {
+            <span>{{ estimateLabel() }}</span>
+          } @else {
+            <span class="estimate-placeholder">Est</span>
+          }
+          @if (card().timeSpentMinutes) {
+            <span class="estimate-spent">/ {{ formatDuration(card().timeSpentMinutes) }}</span>
+          }
+        </button>
+      } @else {
+        <button type="button" class="estimate-add" (click)="startEstimateEdit($event)">Est</button>
+      }
       @if (checklistProgress(); as progress) {
         <span class="checklist-badge" [class.checklist-badge--done]="progress === 'done'">
           @if (progress === 'done') {
@@ -51,6 +76,5 @@
       @if (card().dueDate) {
         <time>{{ card().dueDate }}</time>
       }
-    </footer>
-  }
+  </footer>
 </article>

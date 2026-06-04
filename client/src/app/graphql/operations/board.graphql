@@ -75,6 +75,15 @@ fragment ActivityFields on ActivityItem {
   createdAt
 }
 
+fragment TimeLogFields on TaskTimeLog {
+  id
+  taskId
+  minutes
+  comment
+  author
+  createdAt
+}
+
 fragment CardFields on BoardCard {
   id
   boardId
@@ -89,6 +98,8 @@ fragment CardFields on BoardCard {
   archived
   version
   updatedAt
+  estimateMinutes
+  timeSpentMinutes
   labels {
     ...LabelFields
   }
@@ -97,6 +108,9 @@ fragment CardFields on BoardCard {
   }
   comments {
     ...CommentFields
+  }
+  timeLogs {
+    ...TimeLogFields
   }
 }
 
@@ -114,6 +128,8 @@ fragment TaskFields on Task {
   archived
   version
   updatedAt
+  estimateMinutes
+  timeSpentMinutes
 }
 
 fragment ListFields on BoardList {
@@ -312,6 +328,12 @@ mutation AddComment($taskId: ID!, $body: String!) {
   }
 }
 
+mutation LogTaskTime($input: LogTaskTimeInput!) {
+  logTaskTime(input: $input) {
+    ...TimeLogFields
+  }
+}
+
 subscription BoardChanged($boardId: ID!) {
   boardChanged(boardId: $boardId) {
     type
@@ -340,6 +362,9 @@ subscription BoardChanged($boardId: ID!) {
     }
     checklistItem {
       ...ChecklistItemFields
+    }
+    timeLog {
+      ...TimeLogFields
     }
     activity {
       ...ActivityFields

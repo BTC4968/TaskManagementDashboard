@@ -50,11 +50,14 @@ export type BoardCard = {
   coverColor?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   dueDate?: Maybe<Scalars['String']['output']>;
+  estimateMinutes?: Maybe<Scalars['Int']['output']>;
   id: Scalars['ID']['output'];
   labels: Array<Label>;
   listId: Scalars['ID']['output'];
   position: Scalars['Float']['output'];
   priority: Scalars['Int']['output'];
+  timeLogs: Array<TaskTimeLog>;
+  timeSpentMinutes: Scalars['Int']['output'];
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
@@ -72,6 +75,7 @@ export type BoardEvent = {
   label?: Maybe<Label>;
   list?: Maybe<TaskList>;
   task?: Maybe<Task>;
+  timeLog?: Maybe<TaskTimeLog>;
   type: BoardEventType;
 };
 
@@ -88,7 +92,8 @@ export enum BoardEventType {
   LabelUpdated = 'LABEL_UPDATED',
   ListArchived = 'LIST_ARCHIVED',
   ListCreated = 'LIST_CREATED',
-  ListUpdated = 'LIST_UPDATED'
+  ListUpdated = 'LIST_UPDATED',
+  TimeLogged = 'TIME_LOGGED'
 }
 
 export type BoardInvitation = {
@@ -224,6 +229,12 @@ export type ListMutationResult = {
   success: Scalars['Boolean']['output'];
 };
 
+export type LogTaskTimeInput = {
+  comment?: InputMaybe<Scalars['String']['input']>;
+  duration: Scalars['String']['input'];
+  taskId: Scalars['ID']['input'];
+};
+
 export type MoveTaskInput = {
   boardId: Scalars['ID']['input'];
   clientMutationId?: InputMaybe<Scalars['String']['input']>;
@@ -246,6 +257,7 @@ export type Mutation = {
   deleteChecklistItem: ChecklistItemDeleteResult;
   deleteTask: TaskDeleteResult;
   inviteMember: BoardInvitation;
+  logTaskTime: TaskTimeLog;
   moveTask: TaskUpdateResult;
   setTaskLabels?: Maybe<Task>;
   updateBoard: BoardMutationResult;
@@ -314,6 +326,11 @@ export type MutationDeleteTaskArgs = {
 
 export type MutationInviteMemberArgs = {
   input: InviteMemberInput;
+};
+
+
+export type MutationLogTaskTimeArgs = {
+  input: LogTaskTimeInput;
 };
 
 
@@ -446,10 +463,12 @@ export type Task = {
   coverColor?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
   dueDate?: Maybe<Scalars['String']['output']>;
+  estimateMinutes?: Maybe<Scalars['Int']['output']>;
   id: Scalars['ID']['output'];
   listId: Scalars['ID']['output'];
   position: Scalars['Float']['output'];
   priority: Scalars['Int']['output'];
+  timeSpentMinutes: Scalars['Int']['output'];
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
@@ -511,6 +530,16 @@ export type TaskSortInput = {
   field: Scalars['String']['input'];
 };
 
+export type TaskTimeLog = {
+  __typename?: 'TaskTimeLog';
+  author: Scalars['String']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  minutes: Scalars['Int']['output'];
+  taskId: Scalars['ID']['output'];
+};
+
 export type TaskUpdateResult = {
   __typename?: 'TaskUpdateResult';
   conflict: Scalars['Boolean']['output'];
@@ -543,10 +572,19 @@ export type UpdateTaskInput = {
   coverColor?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   dueDate?: InputMaybe<Scalars['String']['input']>;
+  estimateMinutes?: InputMaybe<Scalars['Int']['input']>;
   listId?: InputMaybe<Scalars['ID']['input']>;
   position?: InputMaybe<Scalars['Float']['input']>;
   priority?: InputMaybe<Scalars['Int']['input']>;
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UserIdentity = {
+  __typename?: 'UserIdentity';
+  auth0Sub: Scalars['ID']['output'];
+  createdAt: Scalars['String']['output'];
+  profileAuth0Sub: Scalars['ID']['output'];
+  provider: Scalars['String']['output'];
 };
 
 export type UserProfile = {
@@ -555,9 +593,11 @@ export type UserProfile = {
   createdAt: Scalars['String']['output'];
   displayName: Scalars['String']['output'];
   email?: Maybe<Scalars['String']['output']>;
+  identities: Array<UserIdentity>;
   isOnboarded: Scalars['Boolean']['output'];
   lastSeenAt?: Maybe<Scalars['String']['output']>;
   pictureUrl?: Maybe<Scalars['String']['output']>;
+  providers: Array<Scalars['String']['output']>;
   updatedAt: Scalars['String']['output'];
 };
 
@@ -577,11 +617,13 @@ export type CommentFieldsFragment = { __typename?: 'TaskComment', id: string, ta
 
 export type ActivityFieldsFragment = { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string };
 
-export type CardFieldsFragment = { __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> };
+export type TimeLogFieldsFragment = { __typename?: 'TaskTimeLog', id: string, taskId: string, minutes: number, comment?: string | null, author: string, createdAt: string };
 
-export type TaskFieldsFragment = { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string };
+export type CardFieldsFragment = { __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }>, timeLogs: Array<{ __typename?: 'TaskTimeLog', id: string, taskId: string, minutes: number, comment?: string | null, author: string, createdAt: string }> };
 
-export type ListFieldsFragment = { __typename?: 'BoardList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> }> };
+export type TaskFieldsFragment = { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number };
+
+export type ListFieldsFragment = { __typename?: 'BoardList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }>, timeLogs: Array<{ __typename?: 'TaskTimeLog', id: string, taskId: string, minutes: number, comment?: string | null, author: string, createdAt: string }> }> };
 
 export type DefaultBoardQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -624,7 +666,7 @@ export type BoardViewQueryVariables = Exact<{
 }>;
 
 
-export type BoardViewQuery = { __typename?: 'Query', boardView?: { __typename?: 'BoardView', board: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string }, lists: Array<{ __typename?: 'BoardList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> }> }>, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, activity: Array<{ __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string }> } | null };
+export type BoardViewQuery = { __typename?: 'Query', boardView?: { __typename?: 'BoardView', board: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string }, lists: Array<{ __typename?: 'BoardList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }>, timeLogs: Array<{ __typename?: 'TaskTimeLog', id: string, taskId: string, minutes: number, comment?: string | null, author: string, createdAt: string }> }> }>, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, activity: Array<{ __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string }> } | null };
 
 export type CreateListMutationVariables = Exact<{
   input: CreateListInput;
@@ -675,7 +717,7 @@ export type CreateTaskMutationVariables = Exact<{
 }>;
 
 
-export type CreateTaskMutation = { __typename?: 'Mutation', createTask: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } };
+export type CreateTaskMutation = { __typename?: 'Mutation', createTask: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number } };
 
 export type UpdateTaskMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -684,14 +726,14 @@ export type UpdateTaskMutationVariables = Exact<{
 }>;
 
 
-export type UpdateTaskMutation = { __typename?: 'Mutation', updateTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
+export type UpdateTaskMutation = { __typename?: 'Mutation', updateTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number } | null } };
 
 export type MoveTaskMutationVariables = Exact<{
   input: MoveTaskInput;
 }>;
 
 
-export type MoveTaskMutation = { __typename?: 'Mutation', moveTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
+export type MoveTaskMutation = { __typename?: 'Mutation', moveTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number } | null } };
 
 export type DeleteTaskMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -699,7 +741,7 @@ export type DeleteTaskMutationVariables = Exact<{
 }>;
 
 
-export type DeleteTaskMutation = { __typename?: 'Mutation', deleteTask: { __typename?: 'TaskDeleteResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
+export type DeleteTaskMutation = { __typename?: 'Mutation', deleteTask: { __typename?: 'TaskDeleteResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number } | null } };
 
 export type CreateLabelMutationVariables = Exact<{
   boardId: Scalars['ID']['input'];
@@ -716,7 +758,7 @@ export type SetTaskLabelsMutationVariables = Exact<{
 }>;
 
 
-export type SetTaskLabelsMutation = { __typename?: 'Mutation', setTaskLabels?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null };
+export type SetTaskLabelsMutation = { __typename?: 'Mutation', setTaskLabels?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number } | null };
 
 export type CreateChecklistItemMutationVariables = Exact<{
   taskId: Scalars['ID']['input'];
@@ -751,12 +793,19 @@ export type AddCommentMutationVariables = Exact<{
 
 export type AddCommentMutation = { __typename?: 'Mutation', addComment: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } };
 
+export type LogTaskTimeMutationVariables = Exact<{
+  input: LogTaskTimeInput;
+}>;
+
+
+export type LogTaskTimeMutation = { __typename?: 'Mutation', logTaskTime: { __typename?: 'TaskTimeLog', id: string, taskId: string, minutes: number, comment?: string | null, author: string, createdAt: string } };
+
 export type BoardChangedSubscriptionVariables = Exact<{
   boardId: Scalars['ID']['input'];
 }>;
 
 
-export type BoardChangedSubscription = { __typename?: 'Subscription', boardChanged: { __typename?: 'BoardEvent', type: BoardEventType, boardId: string, clientMutationId?: string | null, actorId?: string | null, actorName?: string | null, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null, label?: { __typename?: 'Label', id: string, boardId: string, name: string, color: string } | null, comment?: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } | null, checklistItem?: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } | null, activity?: { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string } | null } };
+export type BoardChangedSubscription = { __typename?: 'Subscription', boardChanged: { __typename?: 'BoardEvent', type: BoardEventType, boardId: string, clientMutationId?: string | null, actorId?: string | null, actorName?: string | null, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, estimateMinutes?: number | null, timeSpentMinutes: number } | null, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null, label?: { __typename?: 'Label', id: string, boardId: string, name: string, color: string } | null, comment?: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } | null, checklistItem?: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } | null, timeLog?: { __typename?: 'TaskTimeLog', id: string, taskId: string, minutes: number, comment?: string | null, author: string, createdAt: string } | null, activity?: { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string } | null } };
 
 export type UserProfileFieldsFragment = { __typename?: 'UserProfile', auth0Sub: string, displayName: string, email?: string | null, pictureUrl?: string | null, isOnboarded: boolean, lastSeenAt?: string | null, createdAt: string, updatedAt: string };
 
@@ -846,6 +895,8 @@ export const TaskFieldsFragmentDoc = gql`
   archived
   version
   updatedAt
+  estimateMinutes
+  timeSpentMinutes
 }
     `;
 export const LabelFieldsFragmentDoc = gql`
@@ -874,6 +925,16 @@ export const CommentFieldsFragmentDoc = gql`
   createdAt
 }
     `;
+export const TimeLogFieldsFragmentDoc = gql`
+    fragment TimeLogFields on TaskTimeLog {
+  id
+  taskId
+  minutes
+  comment
+  author
+  createdAt
+}
+    `;
 export const CardFieldsFragmentDoc = gql`
     fragment CardFields on BoardCard {
   id
@@ -889,6 +950,8 @@ export const CardFieldsFragmentDoc = gql`
   archived
   version
   updatedAt
+  estimateMinutes
+  timeSpentMinutes
   labels {
     ...LabelFields
   }
@@ -898,10 +961,14 @@ export const CardFieldsFragmentDoc = gql`
   comments {
     ...CommentFields
   }
+  timeLogs {
+    ...TimeLogFields
+  }
 }
     ${LabelFieldsFragmentDoc}
 ${ChecklistItemFieldsFragmentDoc}
-${CommentFieldsFragmentDoc}`;
+${CommentFieldsFragmentDoc}
+${TimeLogFieldsFragmentDoc}`;
 export const ListFieldsFragmentDoc = gql`
     fragment ListFields on BoardList {
   id
@@ -1394,6 +1461,24 @@ export const AddCommentDocument = gql`
       super(apollo);
     }
   }
+export const LogTaskTimeDocument = gql`
+    mutation LogTaskTime($input: LogTaskTimeInput!) {
+  logTaskTime(input: $input) {
+    ...TimeLogFields
+  }
+}
+    ${TimeLogFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class LogTaskTimeGQL extends Apollo.Mutation<LogTaskTimeMutation, LogTaskTimeMutationVariables> {
+    override document = LogTaskTimeDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
 export const BoardChangedDocument = gql`
     subscription BoardChanged($boardId: ID!) {
   boardChanged(boardId: $boardId) {
@@ -1424,6 +1509,9 @@ export const BoardChangedDocument = gql`
     checklistItem {
       ...ChecklistItemFields
     }
+    timeLog {
+      ...TimeLogFields
+    }
     activity {
       ...ActivityFields
     }
@@ -1433,6 +1521,7 @@ export const BoardChangedDocument = gql`
 ${LabelFieldsFragmentDoc}
 ${CommentFieldsFragmentDoc}
 ${ChecklistItemFieldsFragmentDoc}
+${TimeLogFieldsFragmentDoc}
 ${ActivityFieldsFragmentDoc}`;
 
   @Injectable({

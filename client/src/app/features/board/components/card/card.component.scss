@@ -141,3 +141,44 @@ strong {
   color: var(--success);
   font-weight: 600;
 }
+
+.estimate-badge,
+.estimate-add {
+  width: auto;
+  height: auto;
+  opacity: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.estimate-add {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--text-muted) 45%, transparent);
+  color: var(--text-muted);
+}
+
+.estimate-spent {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.estimate-input {
+  width: 72px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-1);
+  background: var(--surface-input);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.estimate-input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}

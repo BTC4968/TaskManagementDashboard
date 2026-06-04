@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { BoardCardModel, BoardMemberModel } from '../../models/board.types';
 import { memberSingleInitial } from '../../utils/board.utils';
+import { formatDuration, parseDurationToMinutes } from '../../utils/time.utils';
 
 @Component({
   selector: 'app-board-card',
@@ -15,6 +16,10 @@ export class CardComponent {
   readonly conflicted = input(false);
   readonly open = output<BoardCardModel>();
   readonly archive = output<BoardCardModel>();
+  readonly estimateChange = output<{ card: BoardCardModel; estimateMinutes: number | null }>();
+
+  readonly editingEstimate = signal(false);
+  readonly estimateDraft = signal('');
 
   readonly checklistProgress = computed(() => {
     const items = this.card().checklist;
@@ -33,5 +38,40 @@ export class CardComponent {
     return ids.map((id) => lookup.get(id)).filter((member): member is BoardMemberModel => Boolean(member));
   });
 
+  readonly estimateLabel = computed(() => formatDuration(this.card().estimateMinutes));
+
   memberInitials = memberSingleInitial;
+  formatDuration = formatDuration;
+
+  startEstimateEdit(event: Event): void {
+    event.stopPropagation();
+    this.estimateDraft.set(formatDuration(this.card().estimateMinutes) || '');
+    this.editingEstimate.set(true);
+  }
+
+  commitEstimate(event: Event): void {
+    event.stopPropagation();
+    this.editingEstimate.set(false);
+    const draft = this.estimateDraft().trim();
+    const minutes = draft ? parseDurationToMinutes(draft) : null;
+    if (draft && minutes == null) return;
+    const current = this.card().estimateMinutes ?? null;
+    if (minutes === current) return;
+    this.estimateChange.emit({ card: this.card(), estimateMinutes: minutes });
+  }
+
+  cancelEstimate(event: Event): void {
+    event.stopPropagation();
+    this.editingEstimate.set(false);
+  }
+
+  onEstimateKeydown(event: KeyboardEvent): void {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitEstimate(event);
+    } else if (event.key === 'Escape') {
+      this.cancelEstimate(event);
+    }
+  }
 }

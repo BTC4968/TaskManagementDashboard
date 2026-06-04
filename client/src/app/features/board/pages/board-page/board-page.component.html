@@ -22,6 +22,7 @@
     (moveList)="facade.reorderList($event)"
     (openCard)="facade.selectCard($event.id)"
     (archiveCard)="facade.archiveCard($event)"
+    (estimateChange)="facade.updateCard($event.card, { estimateMinutes: $event.estimateMinutes })"
   />
 
   <app-card-detail-modal
@@ -40,6 +41,7 @@
     (renameChecklistItem)="facade.selectedCard() && facade.renameChecklistItem(facade.selectedCard()!, $event.id, $event.text)"
     (deleteChecklistItem)="facade.selectedCard() && facade.deleteChecklistItem(facade.selectedCard()!, $event)"
     (addComment)="facade.addComment($event.card, $event.body)"
+    (logTaskTime)="facade.logTaskTime($event.card, $event.duration, $event.comment)"
     (dismissConflict)="facade.dismissConflict($event)"
   />
 </section>

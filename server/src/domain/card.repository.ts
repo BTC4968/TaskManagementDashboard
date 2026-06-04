@@ -1,11 +1,12 @@
 import { GraphQLError } from 'graphql';
 import type { AuthUser } from '../auth/auth.js';
 import type { DbClient } from '../db/pool.js';
-import { BoardRole, CreateTaskInput, UpdateTaskInput, MoveTaskInput, type Task } from '../types.js';
+import { BoardRole, CreateTaskInput, UpdateTaskInput, MoveTaskInput, type Task, type TaskTimeLog } from '../types.js';
 import { SqlBuilder } from './helpers/sql-builder.js';
-import { cleanOptional, cleanTitle, cleanPriority, cleanColor } from './helpers/validators.js';
-import { toTask, toChecklist, toComment, actor } from './helpers/mappers.js';
-import type { TaskRow, ChecklistRow, CommentRow } from './helpers/db-types.js';
+import { cleanOptional, cleanTitle, cleanPriority, cleanColor, parseDurationMinutes, formatDurationMinutes } from './helpers/validators.js';
+import { toTask, toChecklist, toComment, toTimeLog, actor } from './helpers/mappers.js';
+import type { TaskRow, ChecklistRow, CommentRow, TimeLogRow } from './helpers/db-types.js';
+import { TASK_SELECT_COLUMNS } from './helpers/task-columns.js';
 import { loadAssigneesForTasks, replaceTaskAssignees, assertAssigneesAreBoardMembers, normalizeAssigneeList } from './task-assignee.repository.js';
 import { recordActivity } from './activity.repository.js';
 import { getDefaultBoard } from './board.repository.js';
@@ -63,18 +64,18 @@ function orderBy(sort: Array<{ field: string; direction: string }> | null | unde
 
 export async function getTask(db: DbClient, id: string): Promise<Task | null> {
   const result = await db.query<TaskRow>(
-    `SELECT id, board_id, list_id, title, description, priority, assignee, position, due_date, cover_color, archived, version, updated_at
-     FROM tasks WHERE id = $1`,
+    `SELECT ${TASK_SELECT_COLUMNS} FROM tasks WHERE id = $1`,
     [id],
   );
   if (!result.rows[0]) return null;
   const assignees = (await loadAssigneesForTasks(db, [id])).get(id) ?? [];
-  return toTask(result.rows[0], assignees);
+  const spent = await sumTimeSpentForTasks(db, [id]);
+  return toTask(result.rows[0], assignees, spent.get(id) ?? 0);
 }
 
 export async function getTaskForUser(db: DbClient, id: string, userSub: string): Promise<Task | null> {
   const result = await db.query<TaskRow>(
-    `SELECT t.id, t.board_id, t.list_id, t.title, t.description, t.priority, t.assignee, t.position, t.due_date, t.cover_color, t.archived, t.version, t.updated_at
+    `SELECT t.id, t.board_id, t.list_id, t.title, t.description, t.priority, t.assignee, t.position, t.due_date, t.cover_color, t.archived, t.version, t.updated_at, t.estimate_minutes
      FROM tasks t
      JOIN board_members bm ON bm.board_id = t.board_id
      WHERE t.id = $1 AND bm.auth0_sub = $2`,
@@ -82,7 +83,8 @@ export async function getTaskForUser(db: DbClient, id: string, userSub: string):
   );
   if (!result.rows[0]) return null;
   const assignees = (await loadAssigneesForTasks(db, [id])).get(id) ?? [];
-  return toTask(result.rows[0], assignees);
+  const spent = await sumTimeSpentForTasks(db, [id]);
+  return toTask(result.rows[0], assignees, spent.get(id) ?? 0);
 }
 
 async function resolveCreateTarget(db: DbClient, input: CreateTaskInput): Promise<{ boardId: string; listId: string; position: number }> {
@@ -120,14 +122,14 @@ export async function createTask(db: DbClient, input: CreateTaskInput, user: Aut
   const result = await db.query<TaskRow>(
     `INSERT INTO tasks (board_id, list_id, title, description, priority, assignee, position, due_date, cover_color, updated_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     RETURNING id, board_id, list_id, title, description, priority, assignee, position, due_date, cover_color, archived, version, updated_at`,
+     RETURNING ${TASK_SELECT_COLUMNS}`,
     [
       target.boardId, target.listId, cleanTitle(input.title), cleanOptional(input.description),
       cleanPriority(input.priority), assignees[0] ?? null, target.position,
       input.dueDate ?? null, cleanColor(input.coverColor), actor(user),
     ],
   );
-  const task = toTask(result.rows[0], assignees);
+  const task = toTask(result.rows[0], assignees, 0);
   await replaceTaskAssignees(db, task.id, assignees);
   void recordActivity(db, task.boardId, task.id, 'CARD_CREATED', `created "${task.title}"`, user)
     .catch((err) => console.error('Activity recording failed:', err));
@@ -156,6 +158,10 @@ export async function updateTask(
   sql.addOptional('position', input.position);
   sql.addOptional('due_date', input.dueDate);
   sql.addOptional('cover_color', input.coverColor, (v) => cleanColor(v as string | null | undefined));
+
+  if (input.estimateMinutes !== undefined) {
+    sql.add('estimate_minutes', input.estimateMinutes);
+  }
 
   if (input.archived !== undefined && input.archived !== null) {
     sql.add('archived', input.archived);
@@ -194,7 +200,7 @@ export async function updateTask(
     `UPDATE tasks
      SET ${sql.setClause}
      WHERE ${where}
-     RETURNING id, board_id, list_id, title, description, priority, assignee, position, due_date, cover_color, archived, version, updated_at`,
+     RETURNING ${TASK_SELECT_COLUMNS}`,
     allValues,
   );
   if (result.rows[0]) {
@@ -202,7 +208,8 @@ export async function updateTask(
       await replaceTaskAssignees(db, id, assigneesToSet);
     }
     const assignees = assigneesToSet ?? (await loadAssigneesForTasks(db, [id])).get(id) ?? [];
-    const task = toTask(result.rows[0], assignees);
+    const spent = await sumTimeSpentForTasks(db, [id]);
+    const task = toTask(result.rows[0], assignees, spent.get(id) ?? 0);
     void recordActivity(db, task.boardId, task.id, input.archived ? 'CARD_ARCHIVED' : 'CARD_UPDATED', `updated "${task.title}"`, user)
       .catch((err) => console.error('Activity recording failed:', err));
     return { task, conflict: false };
@@ -236,14 +243,15 @@ export async function listTasks(
   const where = listWhere(filter);
   const count = await db.query<{ count: string }>(`SELECT count(*)::text AS count FROM tasks ${where.sql}`, where.values);
   const rows = await db.query<TaskRow>(
-    `SELECT id, board_id, list_id, title, description, priority, assignee, position, due_date, cover_color, archived, version, updated_at
+    `SELECT ${TASK_SELECT_COLUMNS}
      FROM tasks ${where.sql} ${orderBy(sort)}
      LIMIT $${where.values.length + 1} OFFSET $${where.values.length + 2}`,
     [...where.values, safePageSize, offset],
   );
   const assigneesByTask = await loadAssigneesForTasks(db, rows.rows.map((row) => row.id));
+  const spentByTask = await sumTimeSpentForTasks(db, rows.rows.map((row) => row.id));
   return {
-    nodes: rows.rows.map((row) => toTask(row, assigneesByTask.get(row.id) ?? [])),
+    nodes: rows.rows.map((row) => toTask(row, assigneesByTask.get(row.id) ?? [], spentByTask.get(row.id) ?? 0)),
     totalCount: Number(count.rows[0]?.count ?? 0),
   };
 }
@@ -343,6 +351,49 @@ export async function deleteChecklistItem(db: DbClient, id: string, user: AuthUs
   void recordActivity(db, current.rows[0].board_id, current.rows[0].task_id, 'CHECKLIST_UPDATED', `updated checklist on "${current.rows[0].title}"`, user)
     .catch((err) => console.error('Activity recording failed:', err));
   return toChecklist(row);
+}
+
+async function sumTimeSpentForTasks(db: DbClient, taskIds: string[]): Promise<Map<string, number>> {
+  const totals = new Map<string, number>();
+  if (!taskIds.length) return totals;
+  const result = await db.query<{ task_id: string; total: string }>(
+    `SELECT task_id, coalesce(sum(minutes), 0)::text AS total
+     FROM task_time_logs
+     WHERE task_id = ANY($1::uuid[])
+     GROUP BY task_id`,
+    [taskIds],
+  );
+  for (const row of result.rows) {
+    totals.set(row.task_id, Number(row.total));
+  }
+  return totals;
+}
+
+export async function logTaskTime(
+  db: DbClient,
+  taskId: string,
+  duration: string,
+  comment: string | null | undefined,
+  user: AuthUser,
+): Promise<TaskTimeLog> {
+  const minutes = parseDurationMinutes(duration);
+  const taskMeta = await db.query<{ board_id: string; title: string }>('SELECT board_id, title FROM tasks WHERE id = $1', [taskId]);
+  const meta = taskMeta.rows[0];
+  if (!meta) throw new GraphQLError('Task not found.', { extensions: { code: 'BAD_USER_INPUT' } });
+  const result = await db.query<TimeLogRow>(
+    'INSERT INTO task_time_logs (task_id, minutes, comment, author) VALUES ($1, $2, $3, $4) RETURNING id, task_id, minutes, comment, author, created_at',
+    [taskId, minutes, cleanOptional(comment), actor(user)],
+  );
+  const timeLog = toTimeLog(result.rows[0]);
+  void recordActivity(
+    db,
+    meta.board_id,
+    taskId,
+    'TIME_LOGGED',
+    `logged ${formatDurationMinutes(minutes)} on "${meta.title}"`,
+    user,
+  ).catch((err) => console.error('Activity recording failed:', err));
+  return timeLog;
 }
 
 export async function addComment(db: DbClient, taskId: string, body: string, user: AuthUser): Promise<import('../types.js').TaskComment> {

@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { BoardActivityModel, BoardCardModel, BoardLabelModel, BoardMemberModel, CardConflict } from '../../models/board.types';
 import { BoardMembersMultiPickerComponent } from '../board-members-multi-picker/board-members-multi-picker.component';
 import { DueDatePickerComponent } from '../due-date-picker/due-date-picker.component';
+import { formatDuration, parseDurationToMinutes, remainingMinutes } from '../../utils/time.utils';
 
 interface ActivityGroup {
   entry: BoardActivityModel;
@@ -50,7 +51,7 @@ export class CardDetailModalComponent {
   readonly close = output<void>();
   readonly saveCard = output<{
     card: BoardCardModel;
-    input: Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignees' | 'dueDate' | 'coverColor'>>;
+    input: Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignees' | 'dueDate' | 'coverColor' | 'estimateMinutes'>>;
   }>();
   readonly archiveCard = output<BoardCardModel>();
   readonly addChecklistItem = output<{ card: BoardCardModel; text: string }>();
@@ -58,6 +59,7 @@ export class CardDetailModalComponent {
   readonly renameChecklistItem = output<{ id: string; text: string }>();
   readonly deleteChecklistItem = output<string>();
   readonly addComment = output<{ card: BoardCardModel; body: string }>();
+  readonly logTaskTime = output<{ card: BoardCardModel; duration: string; comment?: string }>();
   readonly dismissConflict = output<string>();
 
   readonly priorities = PRIORITIES;
@@ -72,6 +74,11 @@ export class CardDetailModalComponent {
   readonly editingChecklistId = signal<string | null>(null);
   readonly editingChecklistText = signal('');
   readonly commentBody = signal('');
+  readonly estimateInput = signal('');
+  readonly timeLogDuration = signal('');
+  readonly timeLogComment = signal('');
+
+  formatDuration = formatDuration;
 
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -104,6 +111,31 @@ export class CardDetailModalComponent {
     return groups;
   });
 
+  readonly timeSpentLabel = computed(() => {
+    const spent = this.card()?.timeSpentMinutes ?? 0;
+    return formatDuration(spent) || '0m';
+  });
+
+  readonly timeRemainingLabel = computed(() => {
+    const card = this.card();
+    if (!card) return '—';
+    const remaining = remainingMinutes(card.estimateMinutes, card.timeSpentMinutes);
+    if (remaining == null) return '—';
+    if (remaining < 0) return `-${formatDuration(Math.abs(remaining))}`;
+    return formatDuration(remaining) || '0m';
+  });
+
+  readonly timeRemainingOver = computed(() => {
+    const card = this.card();
+    if (!card || card.estimateMinutes == null) return false;
+    return card.timeSpentMinutes > card.estimateMinutes;
+  });
+
+  readonly sortedTimeLogs = computed(() => {
+    const logs = this.card()?.timeLogs ?? [];
+    return [...logs].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  });
+
   constructor() {
     effect(() => {
       if (this.card()) {
@@ -125,6 +157,9 @@ export class CardDetailModalComponent {
       this.checklistText.set('');
       this.editingChecklistId.set(null);
       this.commentBody.set('');
+      this.estimateInput.set(formatDuration(card?.estimateMinutes) || '');
+      this.timeLogDuration.set('');
+      this.timeLogComment.set('');
     });
   }
 
@@ -167,6 +202,32 @@ export class CardDetailModalComponent {
   commitCoverColor(value: string): void {
     this.coverColor.set(value);
     this.save();
+  }
+
+  commitEstimate(): void {
+    const card = this.card();
+    if (!card) return;
+    const draft = this.estimateInput().trim();
+    const minutes = draft ? parseDurationToMinutes(draft) : null;
+    if (draft && minutes == null) return;
+    if ((minutes ?? null) === (card.estimateMinutes ?? null)) return;
+    this.saveCard.emit({ card, input: { estimateMinutes: minutes } });
+  }
+
+  submitTimeLog(): void {
+    const card = this.card();
+    if (!card || !this.timeLogDuration().trim()) return;
+    this.logTaskTime.emit({
+      card,
+      duration: this.timeLogDuration(),
+      comment: this.timeLogComment().trim() || undefined,
+    });
+    this.timeLogDuration.set('');
+    this.timeLogComment.set('');
+  }
+
+  isTempTimeLog(id: string): boolean {
+    return id.startsWith('temp-timelog-');
   }
 
   displayActor(actor: string): string {

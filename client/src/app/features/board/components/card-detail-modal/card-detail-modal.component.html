@@ -64,6 +64,69 @@
             </label>
           </div>
 
+          <section class="block time-block">
+            <h3>Time tracking</h3>
+            <div class="time-summary">
+              <label class="time-field">
+                <span class="action-label">Original estimate</span>
+                <input
+                  [ngModel]="estimateInput()"
+                  name="estimateInput"
+                  (ngModelChange)="estimateInput.set($event)"
+                  (blur)="commitEstimate()"
+                  (keydown.enter)="commitEstimate()"
+                  placeholder="2h, 30m, 1d"
+                />
+              </label>
+              <div class="time-stat">
+                <span class="action-label">Time spent</span>
+                <span>{{ timeSpentLabel() }}</span>
+              </div>
+              <div class="time-stat">
+                <span class="action-label">Remaining</span>
+                <span class="time-remaining" [class.time-over]="timeRemainingOver()">{{ timeRemainingLabel() }}</span>
+              </div>
+            </div>
+
+            <form class="time-log-form" (ngSubmit)="submitTimeLog()">
+              <span class="action-label">Log work</span>
+              <div class="time-log-fields">
+                <input
+                  [ngModel]="timeLogDuration()"
+                  name="timeLogDuration"
+                  (ngModelChange)="timeLogDuration.set($event)"
+                  placeholder="1h 30m"
+                />
+                <input
+                  [ngModel]="timeLogComment()"
+                  name="timeLogComment"
+                  (ngModelChange)="timeLogComment.set($event)"
+                  placeholder="Comment (optional)"
+                />
+                <button type="submit" [disabled]="!timeLogDuration().trim()">Log</button>
+              </div>
+            </form>
+
+            @if (sortedTimeLogs().length) {
+              <ul class="time-logs">
+                @for (log of sortedTimeLogs(); track log.id) {
+                  <li class="time-log-item" [class.pending]="isTempTimeLog(log.id)">
+                    <div class="time-log-head">
+                      <strong>{{ formatDuration(log.minutes) }}</strong>
+                      <time>{{ formatTimestamp(log.createdAt) }}</time>
+                    </div>
+                    <p class="time-log-meta">
+                      <span>{{ displayActor(log.author) }}</span>
+                      @if (log.comment) {
+                        <span class="time-log-comment">{{ log.comment }}</span>
+                      }
+                    </p>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+
           <section class="block members-block">
             <h3>Members</h3>
             <app-board-members-multi-picker

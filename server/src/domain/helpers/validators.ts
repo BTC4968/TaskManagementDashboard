@@ -90,3 +90,52 @@ export function normalizeAssigneeList(assignees?: string[] | null): string[] {
   }
   return [...unique];
 }
+
+/** Parse Jira-style durations such as `2h`, `30m`, `1h 30m`, or `1d` (1d = 8h). */
+export function parseDurationMinutes(value: string): number {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    throw new GraphQLError('Duration is required.', { extensions: { code: 'BAD_USER_INPUT' } });
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    const minutes = Number(trimmed);
+    if (minutes <= 0 || minutes > 599_940) {
+      throw new GraphQLError('Duration must be between 1 minute and 999 hours.', { extensions: { code: 'BAD_USER_INPUT' } });
+    }
+    return minutes;
+  }
+
+  const normalized = trimmed.replace(/\s+/g, '');
+  let total = 0;
+  let matched = false;
+  const tokenRe = /(\d+(?:\.\d+)?)([dhm])/g;
+  for (const match of normalized.matchAll(tokenRe)) {
+    matched = true;
+    const amount = Number(match[1]);
+    const unit = match[2];
+    if (unit === 'd') total += amount * 480;
+    else if (unit === 'h') total += amount * 60;
+    else total += amount;
+  }
+
+  if (!matched || total <= 0 || total > 599_940) {
+    throw new GraphQLError('Use durations like 2h, 30m, 1h 30m, or 1d.', { extensions: { code: 'BAD_USER_INPUT' } });
+  }
+
+  return Math.round(total);
+}
+
+export function formatDurationMinutes(minutes: number): string {
+  if (minutes <= 0) return '0m';
+  let remaining = minutes;
+  const days = Math.floor(remaining / 480);
+  remaining %= 480;
+  const hours = Math.floor(remaining / 60);
+  remaining %= 60;
+  const parts: string[] = [];
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (remaining || !parts.length) parts.push(`${remaining}m`);
+  return parts.join(' ');
+}

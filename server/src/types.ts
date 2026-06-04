@@ -18,6 +18,7 @@ export enum BoardEventType {
   CHECKLIST_UPDATED = 'CHECKLIST_UPDATED',
   CHECKLIST_ITEM_DELETED = 'CHECKLIST_ITEM_DELETED',
   COMMENT_CREATED = 'COMMENT_CREATED',
+  TIME_LOGGED = 'TIME_LOGGED',
 }
 
 export enum SortDirection {
@@ -53,6 +54,17 @@ export interface Task {
   archived: boolean;
   version: number;
   updatedAt: string;
+  estimateMinutes: number | null;
+  timeSpentMinutes: number;
+}
+
+export interface TaskTimeLog {
+  id: string;
+  taskId: string;
+  minutes: number;
+  comment: string | null;
+  author: string;
+  createdAt: string;
 }
 
 export interface Board {
@@ -159,6 +171,7 @@ export interface BoardCard extends Task {
   labels: Label[];
   checklist: ChecklistItem[];
   comments: TaskComment[];
+  timeLogs: TaskTimeLog[];
 }
 
 export interface BoardList extends TaskList {
@@ -204,6 +217,7 @@ export interface UpdateTaskInput {
   dueDate?: string | null;
   coverColor?: string | null;
   archived?: boolean | null;
+  estimateMinutes?: number | null;
   clientMutationId?: string | null;
 }
 

@@ -25,6 +25,7 @@
         [conflicted]="conflictIds().has(card.id)"
         (open)="openCard.emit($event)"
         (archive)="archiveCard.emit($event)"
+        (estimateChange)="estimateChange.emit($event)"
       />
     }
   </div>

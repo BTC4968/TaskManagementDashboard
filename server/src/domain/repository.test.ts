@@ -62,6 +62,7 @@ async function createTestPool(): Promise<Pool> {
       cover_color text,
       archived boolean NOT NULL DEFAULT false,
       version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+      estimate_minutes integer,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
       updated_by text NOT NULL
@@ -96,6 +97,14 @@ async function createTestPool(): Promise<Pool> {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
       body text NOT NULL,
+      author text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE task_time_logs (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      minutes integer NOT NULL CHECK (minutes > 0),
+      comment text,
       author text NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );

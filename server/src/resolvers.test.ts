@@ -81,6 +81,7 @@ async function createTestPool(): Promise<Pool> {
       cover_color text,
       archived boolean NOT NULL DEFAULT false,
       version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+      estimate_minutes integer,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
       updated_by text NOT NULL
@@ -118,6 +119,14 @@ async function createTestPool(): Promise<Pool> {
       author text NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE task_time_logs (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      minutes integer NOT NULL CHECK (minutes > 0),
+      comment text,
+      author text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
     CREATE TABLE task_activity (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       board_id uuid NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
@@ -136,6 +145,12 @@ async function createTestPool(): Promise<Pool> {
       last_seen_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE user_identities (
+      auth0_sub text PRIMARY KEY,
+      profile_auth0_sub text NOT NULL REFERENCES user_profiles(auth0_sub) ON DELETE CASCADE,
+      provider text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE TABLE board_members (
       board_id uuid NOT NULL REFERENCES boards(id) ON DELETE CASCADE,

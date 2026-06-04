@@ -37,6 +37,7 @@ enum BoardEventType {
   CHECKLIST_UPDATED
   CHECKLIST_ITEM_DELETED
   COMMENT_CREATED
+  TIME_LOGGED
 }
 
 input TaskFilterInput {
@@ -61,6 +62,12 @@ input CreateTaskInput {
   clientMutationId: String
 }
 
+input LogTaskTimeInput {
+  taskId: ID!
+  duration: String!
+  comment: String
+}
+
 input UpdateTaskInput {
   listId: ID
   title: String
@@ -71,6 +78,7 @@ input UpdateTaskInput {
   dueDate: String
   coverColor: String
   archived: Boolean
+  estimateMinutes: Int
   clientMutationId: String
 }
 
@@ -135,6 +143,17 @@ type Task {
   archived: Boolean!
   version: Int!
   updatedAt: String!
+  estimateMinutes: Int
+  timeSpentMinutes: Int!
+}
+
+type TaskTimeLog {
+  id: ID!
+  taskId: ID!
+  minutes: Int!
+  comment: String
+  author: String!
+  createdAt: String!
 }
 
 type Board {
@@ -255,6 +274,9 @@ type BoardCard {
   labels: [Label!]!
   checklist: [ChecklistItem!]!
   comments: [TaskComment!]!
+  estimateMinutes: Int
+  timeSpentMinutes: Int!
+  timeLogs: [TaskTimeLog!]!
 }
 
 type BoardList {
@@ -305,6 +327,7 @@ type BoardEvent {
   label: Label
   comment: TaskComment
   checklistItem: ChecklistItem
+  timeLog: TaskTimeLog
   activity: ActivityItem
 }
 
@@ -342,6 +365,7 @@ type Mutation {
   updateChecklistItem(id: ID!, text: String, checked: Boolean): ChecklistItem
   deleteChecklistItem(id: ID!): ChecklistItemDeleteResult!
   addComment(taskId: ID!, body: String!): TaskComment!
+  logTaskTime(input: LogTaskTimeInput!): TaskTimeLog!
 }
 
 type ChecklistItemDeleteResult {

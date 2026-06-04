@@ -24,6 +24,7 @@ export class BoardCanvasComponent {
   readonly moveList = output<ListMoveRequest>();
   readonly openCard = output<BoardCardModel>();
   readonly archiveCard = output<BoardCardModel>();
+  readonly estimateChange = output<{ card: BoardCardModel; estimateMinutes: number | null }>();
 
   readonly canvasEl = viewChild<ElementRef<HTMLElement>>('canvasEl');
   readonly grabbing = signal(false);

@@ -37,6 +37,7 @@ export interface TaskRow {
   archived: boolean;
   version: number;
   updated_at: Date | string;
+  estimate_minutes: number | null;
 }
 
 export interface LabelRow {
@@ -58,6 +59,15 @@ export interface CommentRow {
   id: string;
   task_id: string;
   body: string;
+  author: string;
+  created_at: Date | string;
+}
+
+export interface TimeLogRow {
+  id: string;
+  task_id: string;
+  minutes: number;
+  comment: string | null;
   author: string;
   created_at: Date | string;
 }

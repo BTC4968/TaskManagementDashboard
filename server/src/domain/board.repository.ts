@@ -5,20 +5,30 @@ import { env } from '../config/env.js';
 import type { DbClient } from '../db/pool.js';
 import {
   Board, BoardView, BoardCard, BoardList, Label, CreateBoardInput, UpdateBoardInput,
-  BoardEventType, BoardRole, TaskList, type TaskComment, type ChecklistItem,
+  BoardEventType, BoardRole, TaskList, type TaskComment, type ChecklistItem, type TaskTimeLog,
 } from '../types.js';
 import { SqlBuilder } from './helpers/sql-builder.js';
 import { cleanOptional, cleanTitle, parseDataImage, extensionForMimeType } from './helpers/validators.js';
-import { toBoard, toList, toTask, toLabel, toChecklist, toComment, toActivity, groupBy, actor } from './helpers/mappers.js';
-import type { BoardRow, ListRow, TaskRow, LabelRow, ChecklistRow, CommentRow, ActivityRow } from './helpers/db-types.js';
+import { toBoard, toList, toTask, toLabel, toChecklist, toComment, toTimeLog, toActivity, groupBy, actor } from './helpers/mappers.js';
+import type { BoardRow, ListRow, TaskRow, LabelRow, ChecklistRow, CommentRow, TimeLogRow, ActivityRow } from './helpers/db-types.js';
+import { TASK_SELECT_COLUMNS } from './helpers/task-columns.js';
 import { loadAssigneesForTasks } from './task-assignee.repository.js';
 
-export function toBoardCard(row: TaskRow, assignees: string[], labels: Label[], checklist: ChecklistItem[], comments: TaskComment[]): BoardCard {
+export function toBoardCard(
+  row: TaskRow,
+  assignees: string[],
+  labels: Label[],
+  checklist: ChecklistItem[],
+  comments: TaskComment[],
+  timeLogs: TaskTimeLog[],
+): BoardCard {
+  const timeSpentMinutes = timeLogs.reduce((total, log) => total + log.minutes, 0);
   return {
-    ...toTask(row, assignees),
+    ...toTask(row, assignees, timeSpentMinutes),
     labels,
     checklist,
     comments,
+    timeLogs,
   };
 }
 
@@ -171,6 +181,7 @@ export interface BoardEvent {
   label?: Label | null;
   comment?: TaskComment | null;
   checklistItem?: ChecklistItem | null;
+  timeLog?: TaskTimeLog | null;
   activity?: import('../types.js').ActivityItem | null;
 }
 
@@ -183,7 +194,7 @@ export async function getBoardView(db: DbClient, boardId: string): Promise<Board
     [boardId],
   );
   const tasksResult = await db.query<TaskRow>(
-    `SELECT id, board_id, list_id, title, description, priority, assignee, position, due_date, cover_color, archived, version, updated_at
+    `SELECT ${TASK_SELECT_COLUMNS}
      FROM tasks
      WHERE board_id = $1 AND archived = false
      ORDER BY position ASC, updated_at DESC`,
@@ -213,6 +224,14 @@ export async function getBoardView(db: DbClient, boardId: string): Promise<Board
      ORDER BY tc.created_at DESC`,
     [boardId],
   );
+  const timeLogsResult = await db.query<TimeLogRow>(
+    `SELECT tl.id, tl.task_id, tl.minutes, tl.comment, tl.author, tl.created_at
+     FROM task_time_logs tl
+     JOIN tasks t ON t.id = tl.task_id
+     WHERE t.board_id = $1
+     ORDER BY tl.created_at DESC`,
+    [boardId],
+  );
   const activityResult = await db.query<ActivityRow>(
     'SELECT id, task_id, type, message, actor, created_at FROM task_activity WHERE board_id = $1 ORDER BY created_at DESC LIMIT 100',
     [boardId],
@@ -227,17 +246,19 @@ export async function getBoardView(db: DbClient, boardId: string): Promise<Board
 
   const checklistByTask = groupBy(checklistResult.rows.map(toChecklist), (item) => item.taskId);
   const commentsByTask = groupBy(commentsResult.rows.map(toComment), (comment) => comment.taskId);
+  const timeLogsByTask = groupBy(timeLogsResult.rows.map(toTimeLog), (log) => log.taskId);
   const assigneesByTask = await loadAssigneesForTasks(db, tasksResult.rows.map((row) => row.id));
 
-  const cards = tasksResult.rows.map((row): BoardCard => {
-    const task = toTask(row, assigneesByTask.get(row.id) ?? []);
-    return {
-      ...task,
-      labels: (labelIdsByTask.get(task.id) ?? []).map((id) => labelsById.get(id)).filter((label): label is Label => Boolean(label)),
-      checklist: checklistByTask.get(task.id) ?? [],
-      comments: commentsByTask.get(task.id) ?? [],
-    };
-  });
+  const cards = tasksResult.rows.map((row): BoardCard =>
+    toBoardCard(
+      row,
+      assigneesByTask.get(row.id) ?? [],
+      (labelIdsByTask.get(row.id) ?? []).map((id) => labelsById.get(id)).filter((label): label is Label => Boolean(label)),
+      checklistByTask.get(row.id) ?? [],
+      commentsByTask.get(row.id) ?? [],
+      timeLogsByTask.get(row.id) ?? [],
+    ),
+  );
   const cardsByList = groupBy(cards, (card) => card.listId);
 
   return {

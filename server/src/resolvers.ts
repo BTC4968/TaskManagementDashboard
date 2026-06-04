@@ -28,6 +28,7 @@ import {
   getBoardRole,
   getBoardView,
   getDefaultBoardForUser,
+  logTaskTime,
   getTask,
   getTaskForUser,
   getUserProfile, getUserIdentities,
@@ -506,6 +507,22 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
           ...boardEventSource(user),
         });
         return comment;
+      },
+      logTaskTime: async (_: unknown, { input }: { input: { taskId: string; duration: string; comment?: string | null } }, context: GraphQLContext) => {
+        const boardId = await boardIdForTask(deps.db, input.taskId);
+        if (!boardId) {
+          throw new GraphQLError('Task not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
+        const timeLog = await logTaskTime(deps.db, input.taskId, input.duration, input.comment, user);
+        await deps.publishBoardEvent({
+          type: BoardEventType.TIME_LOGGED,
+          boardId,
+          timeLog,
+          ...boardEventSource(user),
+        });
+        return timeLog;
       },
     },
     Subscription: {
