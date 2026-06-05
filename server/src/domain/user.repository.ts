@@ -5,6 +5,7 @@ import { env } from '../config/env.js';
 import type { DbClient } from '../db/pool.js';
 import { UserProfile, UserIdentity, BoardMember, BoardInvitation, InvitationStatus, BoardRole, UpdateMyProfileInput, InviteMemberInput } from '../types.js';
 import { cleanDisplayName, cleanOptional, cleanEmail, cleanInviteRole, parseDataImage, extensionForMimeType, cleanColor } from './helpers/validators.js';
+import { assertSignInProviderAllowed, registeredProvidersForProfile } from './helpers/auth-providers.js';
 import { toUserProfile, toUserIdentity, toBoardMember, toBoardInvitation, toLabel, defaultDisplayName, providerFromSub } from './helpers/mappers.js';
 import { recordActivity } from './activity.repository.js';
 import type { UserProfileRow, UserIdentityRow, BoardMemberRow, BoardInvitationRow } from './helpers/db-types.js';
@@ -91,6 +92,8 @@ export async function getUserProfile(db: DbClient, user: AuthUser): Promise<User
     if (emailResult.rows.length > 0) {
       const existingProfile = emailResult.rows[0];
       const existingSub = existingProfile.auth0_sub;
+      const registered = await registeredProvidersForProfile(db, existingSub);
+      assertSignInProviderAllowed(sub, registered);
 
       // Link the new identity to the existing profile
       await ensureIdentity(db, sub, existingSub);

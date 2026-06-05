@@ -15,4 +15,9 @@ export const authRoutes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('../pages/verify-email.component').then((m) => m.VerifyEmailComponent),
   },
+  {
+    path: 'wrong-provider',
+    canActivate: [authGuard],
+    loadComponent: () => import('../pages/wrong-provider.component').then((m) => m.WrongProviderComponent),
+  },
 ];

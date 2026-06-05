@@ -699,3 +699,44 @@ test('taskChanged subscriptions reject missing auth and yield events when authen
 
   await pool.end();
 });
+
+test('password login is rejected when account was created with Google', async () => {
+  const pool = await createTestPool();
+  const schema = createExecutableTaskSchema({
+    db: pool,
+    publishTaskEvent: async () => undefined,
+    publishBoardEvent: async () => undefined,
+    taskEvents: emptyStreams(),
+  });
+
+  const googleUser: AuthUser = { id: 'google-oauth2|google-user', name: 'Google User', email: 'google@example.com', pictureUrl: null, emailVerified: true };
+  await graphql({ schema, source: '{ me { auth0Sub } }', contextValue: { user: googleUser } });
+
+  // Same email but signing in with email+password (auth0 sub prefix)
+  const passwordUser: AuthUser = { id: 'auth0|google-user-password', name: 'Google User', email: 'google@example.com', pictureUrl: null, emailVerified: true };
+  const result = await graphql({ schema, source: '{ me { auth0Sub } }', contextValue: { user: passwordUser } });
+
+  assert.equal(result.errors?.[0]?.extensions?.['code'], 'AUTH_PROVIDER_MISMATCH');
+  assert.deepEqual(result.errors?.[0]?.extensions?.['expectedProviders'], ['google-oauth2']);
+  await pool.end();
+});
+
+test('Google login is rejected when account was created with email+password', async () => {
+  const pool = await createTestPool();
+  const schema = createExecutableTaskSchema({
+    db: pool,
+    publishTaskEvent: async () => undefined,
+    publishBoardEvent: async () => undefined,
+    taskEvents: emptyStreams(),
+  });
+
+  const passwordUser: AuthUser = { id: 'auth0|pw-user', name: 'PW User', email: 'pw@example.com', pictureUrl: null, emailVerified: true };
+  await graphql({ schema, source: '{ me { auth0Sub } }', contextValue: { user: passwordUser } });
+
+  const googleUser: AuthUser = { id: 'google-oauth2|pw-user-google', name: 'PW User', email: 'pw@example.com', pictureUrl: null, emailVerified: true };
+  const result = await graphql({ schema, source: '{ me { auth0Sub } }', contextValue: { user: googleUser } });
+
+  assert.equal(result.errors?.[0]?.extensions?.['code'], 'AUTH_PROVIDER_MISMATCH');
+  assert.deepEqual(result.errors?.[0]?.extensions?.['expectedProviders'], ['auth0']);
+  await pool.end();
+});

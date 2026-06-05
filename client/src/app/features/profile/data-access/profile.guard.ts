@@ -3,6 +3,18 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 import { ProfileService } from './profile.service';
 
+function wrongProviderRedirect(router: Router, error: unknown) {
+  const providers = extractExtension<string[]>(error, 'expectedProviders') ?? [];
+  return router.createUrlTree(['/wrong-provider'], { queryParams: providers.length ? { provider: providers } : {} });
+}
+
+function extractExtension<T>(error: unknown, key: string): T | null {
+  if (!error || typeof error !== 'object') return null;
+  const candidate = error as { graphQLErrors?: Array<{ extensions?: Record<string, unknown> }> };
+  const ext = candidate.graphQLErrors?.[0]?.extensions;
+  return ext ? (ext[key] as T) ?? null : null;
+}
+
 export const profileGuard: CanActivateFn = (_route, state) => {
   const profile = inject(ProfileService);
   const router = inject(Router);
@@ -28,6 +40,9 @@ export const profileGuard: CanActivateFn = (_route, state) => {
       });
     }),
     catchError((error: unknown) => {
+      if (hasGraphqlCode(error, 'AUTH_PROVIDER_MISMATCH')) {
+        return of(wrongProviderRedirect(router, error));
+      }
       if (hasGraphqlCode(error, 'UNAUTHENTICATED')) {
         return of(router.createUrlTree(['/login']));
       }
